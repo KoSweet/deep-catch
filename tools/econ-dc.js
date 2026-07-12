@@ -17,8 +17,8 @@ const T = {
     { name: 'Kelp',      price: 200000,    vMin: 45,  vMax: 1100 },
     { name: 'Open Sea',  price: 1400000,   vMin: 80,  vMax: 2200 },
     { name: 'Fjord',     price: 16000000,  vMin: 180, vMax: 4200 },
-    { name: 'Trench',    price: 160000000, vMin: 350, vMax: 9500 },
-    { name: 'Hadal',     price: 560000000, vMin: 800, vMax: 20000 },
+    { name: 'Trench',    price: 48000000,  vMin: 350, vMax: 9500 },
+    { name: 'Hadal',     price: 120000000, vMin: 800, vMax: 20000 },
   ],
   tanks: [
     { name: 'Bowl',  price: 0 },

@@ -1,4 +1,9 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Deep Catch</title>
+<link rel="icon" href="assets/icon.png" type="image/png">
+<!-- YouTube Playables SDK — must load before any game code -->
+<script src="https://www.youtube.com/game_api/v1"></script>
 <style>
   :root {
     --gold: #ffce4a;
@@ -112,6 +117,39 @@
     background: linear-gradient(#ffc59f, #e8895a 60%, #c05f34);
     box-shadow: 0 4px 0 #8a4020, 0 8px 18px rgba(0,0,0,.35); color: #3a1c0c;
   }
+  @keyframes tutPulse {
+    0%, 100% { box-shadow: 0 4px 0 #b9791b, 0 0 0 0 rgba(255,224,122,.55); }
+    50% { box-shadow: 0 4px 0 #b9791b, 0 0 0 10px rgba(255,224,122,0); }
+  }
+  @keyframes tutBounce {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-4px); }
+    60% { transform: translateY(-2px); }
+  }
+  .btn-cast.tut-pulse { animation: tutPulse 1.1s ease-in-out infinite; }
+  .btn-shop.tut-bounce { animation: tutBounce 0.9s ease-in-out 3; }
+  .tab.tut-glow { box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(255,206,74,.45); }
+  .tut-callout {
+    position: absolute; z-index: 18; font-family: var(--font); font-weight: 700; font-size: 11px;
+    letter-spacing: .04em; color: var(--surface); background: rgba(20,12,26,.72);
+    border: 1px solid var(--panel-edge); border-radius: 10px; padding: 7px 11px;
+    pointer-events: none; opacity: 0; transition: opacity .35s;
+  }
+  .tut-callout.show { opacity: 1; }
+  .dex-cell .subtag { display: block; font-size: 8px; color: var(--ink-dim); font-weight: 600; margin-top: 2px; }
+  .dex-cell.chase-miss b { font-size: 8px; line-height: 1.2; }
+  .dedication-picks { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+  .dedication-picks button {
+    font-family: var(--font); font-size: 12px; font-weight: 700; padding: 8px 12px;
+    border-radius: 10px; border: 1px solid var(--panel-edge); background: rgba(20,12,26,.5);
+    color: var(--ink); cursor: pointer;
+  }
+  .dedication-picks button:hover { border-color: var(--gold); color: var(--surface); }
+  #boat-name-input {
+    width: 100%; font-family: var(--font); font-size: 14px; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid var(--panel-edge); background: rgba(20,12,26,.55);
+    color: var(--ink); margin-bottom: 10px;
+  }
   .btn-shop { font-size: 14px; color: var(--ink); padding: 12px 18px;
     background: rgba(46, 30, 50, 0.85); border: 1px solid var(--panel-edge); }
 
@@ -178,6 +216,101 @@
     text-align: center; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.5);
     transition: opacity .4s;
   }
+  .pill-warn {
+    position: absolute; top: 52px; right: 12px; z-index: 17;
+    font-family: var(--font); font-weight: 700; font-size: 11px; letter-spacing: .04em;
+    color: #5a3600; background: linear-gradient(#ffe07a, var(--gold));
+    border: 1px solid rgba(255,206,74,.5); border-radius: 999px; padding: 6px 12px;
+    pointer-events: none; opacity: 0; transition: opacity .35s;
+  }
+  .pill-warn.show { opacity: 1; }
+  .pred-warn {
+    position: absolute; z-index: 19; width: 22px; height: 22px; border-radius: 50%;
+    background: #ff5a5a; color: #fff; font-weight: 900; font-size: 14px; line-height: 22px;
+    text-align: center; pointer-events: none; opacity: 0; transition: opacity .2s;
+    box-shadow: 0 0 12px rgba(255,90,90,.65);
+  }
+  .pred-warn.show { opacity: 1; animation: predPulse 0.85s ease-in-out infinite; }
+  @keyframes predPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+  .shop-sec { margin-bottom: 6px; }
+  .shop-sec-head {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font); font-size: 11px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-dim); margin: 10px 0 6px; padding: 8px 10px; font-weight: 700;
+    background: rgba(20,12,26,.45); border: 1px solid rgba(255,217,160,.14); border-radius: 10px;
+    cursor: pointer;
+  }
+  .shop-sec-head .chev { font-size: 10px; opacity: .8; }
+  .room-tap-hint {
+    position: absolute; z-index: 12; left: 50%; top: calc(14% + 8px); transform: translateX(-50%);
+    font-family: var(--font); font-weight: 700; font-size: 11px; letter-spacing: .04em;
+    color: var(--surface); background: rgba(20,12,26,.65); border: 1px solid var(--panel-edge);
+    border-radius: 999px; padding: 6px 12px; pointer-events: none; opacity: 0;
+    transition: opacity .35s;
+  }
+  .room-tap-hint.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .banner.show { animation-duration: 1.2s; }
+    .btn-cast.tut-pulse, .btn-shop.tut-bounce, .pred-warn.show, .credits-frame { animation: none !important; }
+    .tut-callout, .room-tap-hint, .pill-warn { transition: none; }
+  }
+  .postcard-frame {
+    width: 100%; max-width: 340px; border-radius: 18px; overflow: hidden;
+    border: 3px solid rgba(255,217,160,.35); box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  }
+  .postcard-art {
+    height: 140px; display: flex; align-items: center; justify-content: center;
+    font-size: 48px; letter-spacing: .2em;
+  }
+  .btn-dex {
+    font-family: var(--font); font-weight: 700; font-size: 12px; letter-spacing: .03em;
+    color: var(--ink); background: rgba(20,12,26,.5); border: 1px solid var(--panel-edge);
+    border-radius: 999px; padding: 7px 11px; cursor: pointer; flex: 0 0 auto;
+  }
+  .dex-filters {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+  }
+  .dex-filters button {
+    font-family: var(--font); font-size: 10px; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; padding: 6px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid rgba(255,217,160,.2); background: rgba(20,12,26,.45); color: var(--ink-dim);
+  }
+  .dex-filters button.on { background: var(--gold); color: #3a2410; border-color: var(--gold); }
+  .dex-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px;
+    max-height: 52vh; overflow-y: auto; overscroll-behavior: contain; padding: 2px;
+  }
+  .dex-cell {
+    position: relative; border-radius: 12px; padding: 8px 4px 6px; text-align: center;
+    background: rgba(20,12,26,.45); border: 1px solid rgba(255,217,160,.12);
+    cursor: pointer; transition: transform .08s, border-color .15s;
+  }
+  .dex-cell:active { transform: scale(.96); }
+  .dex-cell.on { border-color: rgba(255,206,74,.45); }
+  .dex-cell .dot {
+    width: 28px; height: 28px; border-radius: 50%; margin: 0 auto 5px;
+    display: grid; place-items: center; font-weight: 800; font-size: 13px;
+  }
+  .dex-cell .dot.miss { background: rgba(255,217,160,.08); color: var(--ink-dim); border: 2px dashed rgba(255,217,160,.25); }
+  .dex-cell b { display: block; font-size: 9px; line-height: 1.25; color: var(--ink); font-weight: 700; }
+  .dex-cell.on b { color: var(--surface); }
+  .dex-cell .tag {
+    position: absolute; top: 4px; right: 4px; font-size: 9px; line-height: 1;
+  }
+  .credits-body {
+    max-height: 58vh; overflow-y: auto; overscroll-behavior: contain;
+    font-size: 13px; line-height: 1.65; color: var(--ink); margin: 12px 0 16px;
+  }
+  .credits-body p { margin-bottom: 12px; }
+  .credits-body .sig { font-style: italic; color: var(--surface); margin-top: 18px; text-align: center; }
+  @keyframes creditsGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,206,74,0); }
+    50% { box-shadow: 0 0 40px rgba(255,206,74,.35); }
+  }
+  .credits-frame { animation: creditsGlow 4s ease-in-out infinite; border-radius: 18px; }
 
   @media (prefers-reduced-motion: reduce) { .banner.show { animation-duration: 1.2s; } }
 </style>
@@ -190,19 +323,62 @@
     </div>
     <div class="brand"><b>Deep&nbsp;Catch</b><span>a cozy little fishing trip</span></div>
     <div class="gold-pill"><span class="coin">$</span><b id="gold">0</b></div>
+    <button class="btn-dex" id="btn-dex" aria-label="Open species journal">📖 <span id="dex-count">0/45</span></button>
     <button id="mute" aria-label="Toggle sound" style="border:0;cursor:pointer;background:rgba(20,12,26,.5);border:1px solid var(--panel-edge);border-radius:999px;width:36px;height:36px;font-size:15px;flex:0 0 auto">🔊</button>
   </div>
 
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>
     <div class="hint" id="hint">Move to aim &middot; tap the water or press Cast to drop your hook</div>
+    <div class="pill-warn" id="golden-warn">✨ golden hour soon</div>
+    <div class="tut-callout" id="tut-callout"></div>
+    <div class="pred-warn" id="pred-warn">!</div>
+    <div class="room-tap-hint" id="room-tap-hint">👆 tap a fish</div>
     <button id="quest" aria-label="Open grandpa's journal" style="position:absolute;top:8px;left:10px;z-index:16;max-width:72%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font);font-weight:700;font-size:12px;color:var(--ink);background:rgba(20,12,26,.55);border:1px solid var(--panel-edge);border-radius:999px;padding:8px 13px;cursor:pointer;text-align:left"></button>
     <div class="overlay" id="note-overlay">
       <div class="shop" style="max-width:340px">
-        <h2>📜 Grandpa's Journal</h2>
+        <h2 id="note-title">📜 Grandpa's Journal</h2>
         <p class="sub" id="note-story" style="font-size:13.5px;line-height:1.55;color:var(--ink);margin:10px 0 14px;font-style:italic"></p>
         <div class="up"><div class="ic">🎯</div><div class="body"><b id="note-goal"></b><p>reward: <span id="note-reward" style="color:var(--gold);font-weight:800"></span></p></div></div>
         <button class="close" id="note-close">Back to the water</button>
+      </div>
+    </div>
+    <div class="overlay" id="postcard-overlay">
+      <div class="shop" style="max-width:360px;padding:16px">
+        <div class="postcard-frame">
+          <div class="postcard-art" id="postcard-art">🌊</div>
+          <div style="padding:14px 16px;background:var(--panel)">
+            <h2 id="postcard-title" style="font-size:18px;margin-bottom:6px"></h2>
+            <p id="postcard-quote" style="font-size:13px;line-height:1.55;color:var(--ink);font-style:italic"></p>
+          </div>
+        </div>
+        <button class="close" id="postcard-close" style="margin-top:12px">Cast off</button>
+      </div>
+    </div>
+    <div class="overlay" id="dex-overlay">
+      <div class="shop" style="max-width:420px;padding:16px">
+        <h2>Species Journal</h2>
+        <p class="sub" id="dex-sub">Grandpa's notes on every fish you've met</p>
+        <div class="dex-filters" id="dex-filters"></div>
+        <div class="dex-grid" id="dex-grid"></div>
+        <button class="close" id="dex-close">Back to the water</button>
+      </div>
+    </div>
+    <div class="overlay" id="credits-overlay">
+      <div class="shop credits-frame" style="max-width:380px;padding:20px">
+        <h2 id="credits-title">The journal is full</h2>
+        <p class="sub" id="credits-sub">45 of 45 species · the fire is yours now</p>
+        <div class="credits-body" id="credits-body"></div>
+        <button class="close" id="credits-close">Keep fishing</button>
+      </div>
+    </div>
+    <div class="overlay" id="dedication-overlay">
+      <div class="shop" style="max-width:360px">
+        <h2>One last line</h2>
+        <p class="sub">Grandpa's journal ends with a blank. Name the boat — it's yours now.</p>
+        <div class="dedication-picks" id="dedication-picks"></div>
+        <input id="boat-name-input" maxlength="24" placeholder="or write your own…">
+        <button class="close" id="dedication-save">Name her &amp; cast off</button>
       </div>
     </div>
     <div class="banner" id="banner"><b>New species!</b><span>added to your aquarium</span></div>
@@ -227,10 +403,13 @@
 <script>
 (() => {
   "use strict";
+  // YouTube Playables environment (null when running as a plain web page)
+  const YT = (typeof ytgame !== "undefined" && ytgame.IN_PLAYABLES_ENV) ? ytgame : null;
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
   const stage = document.getElementById("stage");
   let W = 0, H = 0, DPR = 1;
+  let paused = false;
   const rand = (a, b) => a + Math.random() * (b - a);
   const FONT = () => getComputedStyle(document.body).fontFamily;
 
@@ -242,70 +421,118 @@
     lineUp: 0, netUp: 0, reelUp: 0, hookUp: 0,
     collection: {},   // speciesId -> count caught
     pond: 0, pondsOwned: [0], tank: 0, muted: false,
+    decor: [],        // owned aquarium decor indices
+    boat: 0, boatsOwned: [0],       // hull paint, worn by the dory
+    outfit: 0, outfitsOwned: [0],   // the fisherman's knitwear
+    thermosDay: "", pages: [], bottlesOpened: 0, postcardsSeen: [0],
+    endgameSeen: false, journalFinaleSeen: false, boatName: "",
+    tut: { cast: false, gold: false, species: false },
+    chasePity: {}, thermosTeaseDay: "",
+    shopFold: {}, bragSeen: [],
+    nudgeDay: "", sinks: {},
+    analytics: { boots: 0, casts: 0, caught: 0, goldIn: 0, shopBuys: 0, stolen: 0, chase: 0, thermos: 0, harbor: 0 },
   };
-  function load() {
+  // Playables rule: never call saveData before loadData has resolved.
+  let loadDone = false;
+  function applySave(s) {
+    state.gold = s.gold || 0;
+    state.lineUp = s.lineUp || 0;
+    state.netUp = s.netUp || 0;
+    state.reelUp = s.reelUp || 0;
+    state.hookUp = s.hookUp || 0;
+    state.collection = s.collection || {};
+    state.pondsOwned = Array.isArray(s.pondsOwned) && s.pondsOwned.includes(0) ? s.pondsOwned : [0];
+    state.pond = state.pondsOwned.includes(s.pond) ? s.pond : 0;
+    state.tank = Math.min(2, s.tank || 0);
+    state.muted = !!s.muted;
+    state.qi = s.qi || 0;
+    state.decor = Array.isArray(s.decor) ? s.decor.filter(i => Number.isInteger(i) && i >= 0) : [];
+    state.boatsOwned = Array.isArray(s.boatsOwned) && s.boatsOwned.includes(0) ? s.boatsOwned : [0];
+    state.boat = state.boatsOwned.includes(s.boat) ? s.boat : 0;
+    state.outfitsOwned = Array.isArray(s.outfitsOwned) && s.outfitsOwned.includes(0) ? s.outfitsOwned.filter(i => i >= 0 && i < OUTFITS.length) : [0];
+    state.outfit = state.outfitsOwned.includes(s.outfit) ? s.outfit : 0;
+    state.thermosDay = s.thermosDay || "";
+    state.pages = Array.isArray(s.pages) ? s.pages : [];
+    state.bottlesOpened = s.bottlesOpened || 0;
+    state.postcardsSeen = Array.isArray(s.postcardsSeen) && s.postcardsSeen.includes(0) ? s.postcardsSeen : [0];
+    state.endgameSeen = !!s.endgameSeen;
+    state.journalFinaleSeen = !!s.journalFinaleSeen;
+    state.boatName = typeof s.boatName === "string" ? s.boatName.slice(0, 24) : "";
+    state.tut = s.tut && typeof s.tut === "object"
+      ? { cast: !!s.tut.cast, gold: !!s.tut.gold, species: !!s.tut.species } : { cast: false, gold: false, species: false };
+    state.chasePity = s.chasePity && typeof s.chasePity === "object" ? s.chasePity : {};
+    state.thermosTeaseDay = s.thermosTeaseDay || "";
+    state.shopFold = s.shopFold && typeof s.shopFold === "object" ? s.shopFold : {};
+    state.bragSeen = Array.isArray(s.bragSeen) ? s.bragSeen : [];
+    state.nudgeDay = s.nudgeDay || "";
+    state.sinks = s.sinks && typeof s.sinks === "object" ? s.sinks : {};
+    const defA = { boots: 0, casts: 0, caught: 0, goldIn: 0, shopBuys: 0, stolen: 0, chase: 0, thermos: 0, harbor: 0 };
+    state.analytics = s.analytics && typeof s.analytics === "object"
+      ? { ...defA, ...s.analytics } : { ...defA };
+    if (s.wv !== 2 && s.wv !== 3) { // older builds had 4 waters — remap to the 7-water ladder
+      const map = { 0: 0, 1: 1, 2: 3, 3: 5 };
+      state.pondsOwned = state.pondsOwned.map(i => map[i] !== undefined ? map[i] : 0);
+      if (!state.pondsOwned.includes(0)) state.pondsOwned.push(0);
+      state.pond = map[s.pond] !== undefined ? map[s.pond] : 0;
+      if (!state.pondsOwned.includes(state.pond)) state.pond = 0;
+      state._rescanQuests = true;
+    }
+  }
+  async function load() {
     try {
-      // v2/v1 saves carry over: gold, gear levels, collection
-      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem("deepcatch.v2") || localStorage.getItem("deepcatch.v1");
-      if (raw) {
-        const s = JSON.parse(raw);
-        state.gold = s.gold || 0;
-        state.lineUp = s.lineUp || 0;
-        state.netUp = s.netUp || 0;
-        state.reelUp = s.reelUp || 0;
-        state.hookUp = s.hookUp || 0;
-        state.collection = s.collection || {};
-        state.pondsOwned = Array.isArray(s.pondsOwned) && s.pondsOwned.includes(0) ? s.pondsOwned : [0];
-        state.pond = state.pondsOwned.includes(s.pond) ? s.pond : 0;
-        state.tank = Math.min(2, s.tank || 0);
-        state.muted = !!s.muted;
-        state.qi = s.qi || 0;
-        if (s.wv !== 2) { // older builds had 4 waters — remap to the 7-water ladder
-          const map = { 0: 0, 1: 1, 2: 3, 3: 5 };
-          state.pondsOwned = state.pondsOwned.map(i => map[i] !== undefined ? map[i] : 0);
-          if (!state.pondsOwned.includes(0)) state.pondsOwned.push(0);
-          state.pond = map[s.pond] !== undefined ? map[s.pond] : 0;
-          if (!state.pondsOwned.includes(state.pond)) state.pond = 0;
-          state._rescanQuests = true;
-        }
-      }
+      // In YouTube, progress lives in Playables cloud save; on the plain web,
+      // v3/v2/v1 localStorage saves carry over: gold, gear levels, collection.
+      const raw = YT ? await YT.game.loadData()
+        : localStorage.getItem(SAVE_KEY) || localStorage.getItem("deepcatch.v2") || localStorage.getItem("deepcatch.v1");
+      if (raw) applySave(JSON.parse(raw));
     } catch (e) {}
+    loadDone = true;
   }
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({
+    if (!loadDone) return;
+    const data = JSON.stringify({
       gold: state.gold, lineUp: state.lineUp, netUp: state.netUp,
       reelUp: state.reelUp, hookUp: state.hookUp, collection: state.collection,
-      pond: state.pond, pondsOwned: state.pondsOwned, tank: state.tank, muted: state.muted, qi: state.qi, wv: 2,
-    })); } catch (e) {}
+      pond: state.pond, pondsOwned: state.pondsOwned, tank: state.tank, muted: state.muted, qi: state.qi,
+      decor: state.decor, boat: state.boat, boatsOwned: state.boatsOwned,
+      outfit: state.outfit, outfitsOwned: state.outfitsOwned,
+      thermosDay: state.thermosDay, pages: state.pages, bottlesOpened: state.bottlesOpened,
+      postcardsSeen: state.postcardsSeen, endgameSeen: state.endgameSeen,
+      journalFinaleSeen: state.journalFinaleSeen, boatName: state.boatName,
+      tut: state.tut, chasePity: state.chasePity, thermosTeaseDay: state.thermosTeaseDay,
+      shopFold: state.shopFold, bragSeen: state.bragSeen,
+      nudgeDay: state.nudgeDay, sinks: state.sinks, analytics: state.analytics, wv: 3,
+    });
+    if (YT) YT.game.saveData(data).catch(() => {});
+    else try { localStorage.setItem(SAVE_KEY, data); } catch (e) {}
   }
-  load();
 
   // ---------- species (shallow -> deep, themed per water) ----------
   const SPECIES = [
     // Backyard Pond — the originals
-    { id:"anchovy",  name:"Anchovy",    pond:0, color:"#c3d2df", size:15, minD:0.00, maxD:0.22, gold:3,  rare:1.0, pattern:"lateral" },
-    { id:"clown",    name:"Clownfish",  pond:0, color:"#ff8a3d", size:17, minD:0.05, maxD:0.32, gold:7,  rare:0.9, pattern:"clown" },
+    { id:"anchovy",  name:"Anchovy",    pond:0, color:"#c3d2df", size:15, minD:0.00, maxD:0.22, gold:3,  rare:1.0, pattern:"lateral", curious:true },
+    { id:"clown",    name:"Clownfish",  pond:0, color:"#ff8a3d", size:17, minD:0.05, maxD:0.32, gold:7,  rare:0.9, pattern:"clown", curious:true },
     { id:"mackerel", name:"Mackerel",   pond:0, color:"#5fc6b0", size:20, minD:0.16, maxD:0.44, gold:13, rare:0.85, pattern:"tiger", shy:true },
     { id:"bass",     name:"Bass",       pond:0, color:"#88b85c", size:24, minD:0.26, maxD:0.56, gold:22, rare:0.7, pattern:"stripe" },
     { id:"puffer",   name:"Pufferfish", pond:0, color:"#f2d04b", size:24, minD:0.36, maxD:0.64, gold:38, rare:0.55, body:"puffer" },
     { id:"squid",    name:"Squid",      pond:0, color:"#c07fd6", size:23, minD:0.48, maxD:0.78, gold:60, rare:0.5, body:"squid" },
     { id:"lantern",  name:"Lanternfish",pond:0, color:"#57e0d6", size:19, minD:0.6,  maxD:0.9,  gold:95, rare:0.4, glow:"#9ffff3", pattern:"photo" },
     { id:"angler",   name:"Anglerfish", pond:0, color:"#43607a", size:28, minD:0.72, maxD:0.98, gold:150,rare:0.3, glow:"#ffd66b", pred:true, body:"angler" },
-    { id:"koi",      name:"Golden Koi", pond:0, color:"#ffcf4d", size:26, minD:0.3,  maxD:0.92, gold:240,rare:0.05,glow:"#fff0b0", body:"koi" },
+    { id:"koi",      name:"Golden Koi", pond:0, color:"#ffcf4d", size:26, minD:0.3,  maxD:0.92, gold:240,rare:0.05,glow:"#fff0b0", body:"koi", chase:true },
     // Goldfish Garden — ornamental gold
-    { id:"ranchu",   name:"Golden Ranchu",     pond:1, color:"#f6a93b", size:18, minD:0.00, maxD:0.28, gold:22,  rare:1.0, body:"goldfish", gf:"ranchu" },
+    { id:"ranchu",   name:"Golden Ranchu",     pond:1, color:"#f6a93b", size:18, minD:0.00, maxD:0.28, gold:22,  rare:1.0, body:"goldfish", gf:"ranchu", curious:true },
     { id:"fantail",  name:"Fantail",           pond:1, color:"#ff9a4d", size:17, minD:0.12, maxD:0.45, gold:48,  rare:0.8, body:"goldfish", gf:"fantail" },
-    { id:"bubbleye", name:"Bubble-Eye",        pond:1, color:"#ffc46a", size:16, minD:0.3,  maxD:0.6,  gold:110, rare:0.55, body:"goldfish", gf:"bubbleye" },
+    { id:"bubbleye", name:"Bubble-Eye",        pond:1, color:"#ffc46a", size:16, minD:0.3,  maxD:0.6,  gold:110, rare:0.55, body:"goldfish", gf:"bubbleye", curious:true },
     { id:"bkoi",     name:"Butterfly Koi",     pond:1, color:"#f5efe4", size:24, minD:0.4,  maxD:0.75, gold:230, rare:0.4, body:"koi", flow:true },
-    { id:"celest",   name:"Celestial Goldfish",pond:1, color:"#ffd98e", size:20, minD:0.6,  maxD:0.97, gold:620, rare:0.2, glow:"#ffe9b0", body:"goldfish", gf:"celest", shy:true },
+    { id:"celest",   name:"Celestial Goldfish",pond:1, color:"#ffd98e", size:20, minD:0.6,  maxD:0.97, gold:620, rare:0.2, glow:"#ffe9b0", body:"goldfish", gf:"celest", shy:true, chase:true },
     { id:"pearl",    name:"Pearlscale",        pond:1, color:"#f2dcc6", size:17, minD:0.2,  maxD:0.5,  gold:75,  rare:0.6, body:"goldfish", gf:"fantail" },
     { id:"moor",     name:"Black Moor",        pond:1, color:"#33303a", size:18, minD:0.35, maxD:0.7,  gold:160, rare:0.45, body:"goldfish", gf:"bubbleye" },
     // Kelp Forest — the woods that sway
-    { id:"kperch",   name:"Kelp Perch",        pond:2, color:"#7da65a", size:18, minD:0.00, maxD:0.3,  gold:45,   rare:1.0, pattern:"stripe" },
+    { id:"kperch",   name:"Kelp Perch",        pond:2, color:"#7da65a", size:18, minD:0.00, maxD:0.3,  gold:45,   rare:1.0, pattern:"stripe", curious:true },
     { id:"garib",    name:"Garibaldi",         pond:2, color:"#ff7f2a", size:19, minD:0.1,  maxD:0.4,  gold:90,   rare:0.8, shy:true },
     { id:"rockf",    name:"Rockfish",          pond:2, color:"#8a6e54", size:22, minD:0.3,  maxD:0.6,  gold:170,  rare:0.6, pattern:"dots" },
     { id:"gkelp",    name:"Giant Kelpfish",    pond:2, color:"#5e8a3e", size:26, minD:0.45, maxD:0.75, gold:300,  rare:0.45, pattern:"tiger" },
-    { id:"dragon",   name:"Leafy Seadragon",   pond:2, color:"#9ec46a", size:24, minD:0.6,  maxD:0.9,  gold:650,  rare:0.28, glow:"#d6f0a0", body:"eel", leafy:true },
+    { id:"dragon",   name:"Leafy Seadragon",   pond:2, color:"#9ec46a", size:24, minD:0.6,  maxD:0.9,  gold:650,  rare:0.28, glow:"#d6f0a0", body:"eel", leafy:true, chase:true },
     { id:"moray",    name:"Moray Eel",         pond:2, color:"#6e7a3e", size:30, minD:0.7,  maxD:0.98, gold:1100, rare:0.18, big:2, pred:true, body:"eel" },
     // Open Sea — big fins, moonlit
     { id:"sardine",  name:"Sardine",       pond:3, color:"#b8c9d8", size:14, minD:0.00, maxD:0.3,  gold:80,   rare:1.0, pattern:"dots", shy:true },
@@ -314,28 +541,110 @@
     { id:"reef",     name:"Reef Shark",    pond:3, color:"#7e93a3", size:34, minD:0.4,  maxD:0.75, gold:800,  rare:0.32, big:2, body:"shark", pred:true },
     { id:"hammer",   name:"Hammerhead",    pond:3, color:"#6e8291", size:38, minD:0.6,  maxD:0.9,  gold:1400, rare:0.2,  big:2, body:"shark", hammer:true, pred:true },
     { id:"vamp",     name:"Vampire Squid", pond:3, color:"#5a2a5e", size:22, minD:0.75, maxD:0.98, gold:2200, rare:0.12, glow:"#c86fd0", body:"squid" },
-    { id:"sword",    name:"Swordfish",     pond:3, color:"#5a7a9e", size:34, minD:0.5,  maxD:0.8,  gold:950,  rare:0.28, big:2, body:"tuna", bill:true, shy:true },
+    { id:"sword",    name:"Swordfish",     pond:3, color:"#5a7a9e", size:34, minD:0.5,  maxD:0.8,  gold:950,  rare:0.28, big:2, body:"tuna", bill:true, shy:true, chase:true },
     // Frozen Fjord — under the dancing sky
     { id:"char",     name:"Arctic Char",     pond:4, color:"#b87a8e", size:20, minD:0.00, maxD:0.3,  gold:180,  rare:1.0, pattern:"dots" },
     { id:"icef",     name:"Icefish",         pond:4, color:"#cfe6f0", size:18, minD:0.2,  maxD:0.5,  gold:380,  rare:0.7, glow:"#e8f6ff", shy:true },
-    { id:"narwhal",  name:"Narwhal",         pond:4, color:"#c9d2dc", size:34, minD:0.35, maxD:0.65, gold:900,  rare:0.42, big:2, body:"whale", tusk:true },
+    { id:"narwhal",  name:"Narwhal",         pond:4, color:"#c9d2dc", size:34, minD:0.35, maxD:0.65, gold:900,  rare:0.42, big:2, body:"whale", tusk:true, chase:true },
     { id:"beluga",   name:"Beluga",          pond:4, color:"#e8edf2", size:36, minD:0.5,  maxD:0.8,  gold:1600, rare:0.3,  big:2, body:"whale" },
-    { id:"fjelly",   name:"Frost Jelly",     pond:4, color:"#bfe0f5", size:22, minD:0.65, maxD:0.95, gold:2600, rare:0.2,  glow:"#dff2ff", body:"jelly" },
+    { id:"fjelly",   name:"Frost Jelly",     pond:4, color:"#bfe0f5", size:22, minD:0.65, maxD:0.95, gold:2600, rare:0.2,  glow:"#dff2ff", body:"jelly", curious:true },
     { id:"gshark",   name:"Greenland Shark", pond:4, color:"#5e6a72", size:42, minD:0.75, maxD:0.99, gold:4200, rare:0.12, big:3, danger:true, pred:true, body:"shark" },
     // The Trench — ancient and hungry
     { id:"coel",     name:"Coelacanth",    pond:5, color:"#3b5b9a", size:32, minD:0.15, maxD:0.5,  gold:900,  rare:0.7,  big:2, danger:true, body:"coel" },
     { id:"whaley",   name:"Void Whaley",   pond:5, color:"#251a4e", size:40, minD:0.4,  maxD:0.7,  gold:2600, rare:0.4,  glow:"#8a6fff", big:3, danger:true, body:"whale" },
     { id:"dunk",     name:"Dunkleosteus",  pond:5, color:"#4a4e58", size:44, minD:0.6,  maxD:0.88, gold:5200, rare:0.22, big:3, danger:true, body:"dunk", pred:true },
-    { id:"levi",     name:"The Leviathan", pond:5, color:"#101826", size:52, minD:0.78, maxD:0.99, gold:9500, rare:0.1,  glow:"#6fd6ff", big:3, danger:true, body:"serpent", pred:true },
+    { id:"levi",     name:"The Leviathan", pond:5, color:"#101826", size:52, minD:0.78, maxD:0.99, gold:9500, rare:0.1,  glow:"#6fd6ff", big:3, danger:true, body:"serpent", pred:true, chase:true },
     // The Hadal Garden — dark, and warm, and kind
-    { id:"snail",    name:"Cinder Snailfish", pond:6, color:"#d9a0a8", size:20, minD:0.00, maxD:0.35, gold:800,   rare:1.0, glow:"#ffc9b0" },
-    { id:"emberj",   name:"Ember Jelly",      pond:6, color:"#ff9a5e", size:24, minD:0.2,  maxD:0.55, gold:2000,  rare:0.6, glow:"#ffb96b", body:"jelly" },
+    { id:"snail",    name:"Cinder Snailfish", pond:6, color:"#d9a0a8", size:20, minD:0.00, maxD:0.35, gold:800,   rare:1.0, glow:"#ffc9b0", curious:true },
+    { id:"emberj",   name:"Ember Jelly",      pond:6, color:"#ff9a5e", size:24, minD:0.2,  maxD:0.55, gold:2000,  rare:0.6, glow:"#ffb96b", body:"jelly", curious:true },
     { id:"mothray",  name:"Moth Ray",         pond:6, color:"#c9a88e", size:32, minD:0.4,  maxD:0.7,  gold:4500,  rare:0.4, big:2, glow:"#ffd9a0", body:"ray" },
     { id:"ghost",    name:"Ghost Eel",        pond:6, color:"#d8d2e6", size:30, minD:0.55, maxD:0.85, gold:8000,  rare:0.26, big:2, glow:"#efeaff", body:"eel", pred:true },
     { id:"hearth",   name:"Hearthfish",       pond:6, color:"#ff8a4d", size:26, minD:0.7,  maxD:0.95, gold:12000, rare:0.16, glow:"#ffb060", shy:true },
-    { id:"oldlantern", name:"The Old Lantern", pond:6, color:"#3a2c26", size:50, minD:0.85, maxD:0.99, gold:20000, rare:0.08, big:3, danger:true, pred:true, glow:"#ffb96b", body:"angler" },
+    { id:"oldlantern", name:"The Old Lantern", pond:6, color:"#3a2c26", size:50, minD:0.85, maxD:0.99, gold:20000, rare:0.08, big:3, danger:true, pred:true, glow:"#ffb96b", body:"angler", chase:true },
   ];
   const byId = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+  const CHASE_BY_POND = ["koi", "celest", "dragon", "sword", "narwhal", "levi", "oldlantern"];
+
+  const SPECIES_NOTES = {
+    anchovy:"Grandpa: 'Tiny, but the sea is built from tiny things.'",
+    clown:"Grandpa: 'The orange one with the white stripe — brave as a rooster, that one.'",
+    mackerel:"Grandpa: 'Stripes like a tiger. Shy as one too.'",
+    bass:"Grandpa: 'Ugly fighter. Respect ugly fighters.'",
+    puffer:"Grandpa: 'Puffs up when it's scared. Same as me on storm nights.'",
+    squid:"Grandpa: 'Eight arms and still can't hold a rod. Lucky for us.'",
+    lantern:"Grandpa: 'Carries its own light down where the sun forgets.'",
+    angler:"Grandpa: 'A thief with a lamp. Watch the red eye.'",
+    koi:"Grandpa: 'Gold in still water. Some say it brings luck. I say it brings patience.'",
+    ranchu:"Grandpa: 'Round as a pebble. Calm as a Sunday.'",
+    fantail:"Grandpa: 'The tail fans out like a dancer's skirt.'",
+    bubbleye:"Grandpa: 'Those bubbles are its eyes. Don't stare — it's rude.'",
+    bkoi:"Grandpa: 'Butterfly koi — long fins, long memory.'",
+    celest:"Grandpa: 'Stares at the sky its whole life. I never caught one.'",
+    pearl:"Grandpa: 'Scales like pearls. Grandma would've loved it.'",
+    moor:"Grandpa: 'Black as midnight tea. Gentle soul.'",
+    kperch:"Grandpa: 'Hides in the kelp. You have to look twice.'",
+    garib:"Grandpa: 'Orange as California sunset. Shy until it isn't.'",
+    rockf:"Grandpa: 'Looks like a rock. IS a rock, mostly.'",
+    gkelp:"Grandpa: 'Big as a loaf of bread, green as envy.'",
+    dragon:"Grandpa: 'Dresses as the forest. Look twice at every leaf.'",
+    moray:"Grandpa: 'Took my catch once. Took my hat twice.'",
+    sardine:"Grandpa: 'Silver shoals — where there's one, there's a hundred.'",
+    tuna:"Grandpa: 'Built for speed. Respect the speed.'",
+    ray:"Grandpa: 'Rays fly. Nothing else down there flies.'",
+    reef:"Grandpa: 'Small shark, big attitude.'",
+    hammer:"Grandpa: 'Knocks on the door of the deep.'",
+    vamp:"Grandpa: 'Turns its cape inside-out when startled. Dramatic.'",
+    sword:"Grandpa: 'A bill like a sword. Don't duel it.'",
+    char:"Grandpa: 'Pink as sunset ice. Cold water, warm heart.'",
+    icef:"Grandpa: 'Transparent as a lie you want to believe.'",
+    narwhal:"Grandpa: 'A unicorn lives up there. I am not joking, kid.'",
+    beluga:"Grandpa: 'Sings under the ice. Listen on quiet days.'",
+    fjelly:"Grandpa: 'Drifts like a thought you can't quite catch.'",
+    gshark:"Grandpa: 'Older than the ice. Older than most stories.'",
+    coel:"Grandpa: 'Older than the trees you climbed as a boy.'",
+    whaley:"Grandpa: 'A shadow with a song inside it.'",
+    dunk:"Grandpa: 'Armored jaw. Bit my line clean through once.'",
+    levi:"Grandpa: 'If you're reading this, I never caught it. Catch it for me.'",
+    snail:"Grandpa: 'Slow and warm. The hadal garden starts here.'",
+    emberj:"Grandpa: 'Burns like hearth coals at the bottom of the world.'",
+    mothray:"Grandpa: 'Wings like moth silk. Flutters, doesn't swim.'",
+    ghost:"Grandpa: 'You see through it. It sees through you.'",
+    hearth:"Grandpa: 'Named for the light it carries. Kind light.'",
+    oldlantern:"Grandpa: 'If it finds you, don't be afraid. It only wants to see who kept the fire.'",
+  };
+
+  const EXTRA_PAGES = [
+    { id:"ep_b1", story:"A scrap tucked inside the cover: 'Some pages outlive the book. Keep fishing.'", bottle:true },
+    { id:"ep_b2", story:"'I left notes in bottles so the sea would remember me when I forgot myself.'", bottle:true },
+    { id:"ep_b3", story:"'Your grandma said the aquarium was vanity. I say it's love with a glass wall.'", bottle:true },
+    { id:"ep_b4", story:"'The cat knows when the rare ones rise. Watch her ears.'", bottle:true },
+    { id:"ep_b5", story:"'Every water sings a different song. Learn them all by heart.'", bottle:true },
+    { id:"ep_b6", story:"'If you find a chase fish — the one that barely shows — that's the sea testing you.'", bottle:true },
+    { id:"ep_koi", story:"The koi page is water-stained: 'Gold in still water. I waited forty years for mine.'", species:"koi" },
+    { id:"ep_celest", story:"'The celestial one looks up forever. Maybe it sees something we don't.'", species:"celest" },
+    { id:"ep_dragon", story:"'The seadragon taught me to move slow. Slow is how the deep forgives you.'", species:"dragon" },
+    { id:"ep_sword", story:"'The swordfish cut my net once. I framed the net.'", species:"sword" },
+    { id:"ep_narwhal", story:"'The tusk is real. I measured it against my arm. Longer.'", species:"narwhal" },
+    { id:"ep_levi", story:"Ink blots the page: 'It sang. I put the rod down and listened.'", species:"levi" },
+    { id:"ep_lantern", story:"'The Old Lantern looked at me. I looked back. We understood each other.'", species:"oldlantern" },
+  ];
+
+  const THERMOS_LINES = [
+    "Grandpa's thermos — still warm. The water feels luckier today.",
+    "First cast of the day. Grandpa always said the morning line remembers kindness.",
+    "The thermos rattles with old stories. Golden light follows for a while.",
+    "Steam from the thermos fogs the glass. Even the shy fish seem curious.",
+  ];
+
+  const POSTCARDS = [
+    { art:"🏡", title:"Backyard Pond", quote:"'Start small. Everything starts small.' — the first page, in his hand" },
+    { art:"⛩️", title:"Goldfish Garden", quote:"'Gold in the water, gold in the heart. Don't wait as long as I did.'" },
+    { art:"🌿", title:"Kelp Forest", quote:"'Past the garden wall the kelp sways like slow green weather.'" },
+    { art:"🌊", title:"Open Sea", quote:"'Big water, big fins. Keep your hook moving — a living hook is a lucky hook.'" },
+    { art:"🧊", title:"Frozen Fjord", quote:"'North of everything, the sky dances green over black water.'" },
+    { art:"🕳️", title:"The Trench", quote:"'Lightless. Ancient. Hungry. Save everything — the trench does not haggle.'" },
+    { art:"🏮", title:"The Hadal Garden", quote:"'Past the dark there is a garden. The cold ends. The lights are kind.'" },
+  ];
 
   // ---------- waters & tanks (bought with gold, like everything) ----------
   const PONDS = [
@@ -359,11 +668,11 @@
       sky:["#0a1226","#16264a","#2a4668","#7a9ab8"], cloud:"rgba(60,80,110,.35)",
       water:["#7ac2d8","#3e8cb0","#1e5a86","#0c3258","#041a30"], sun:"#eef4ff", sunGlow:"rgba(200,230,255,.5)",
       shine:"190,220,255", aurora:true },
-    { name:"The Trench",      sub:"lightless · ancient · hungry", price:160000000,
+    { name:"The Trench",      sub:"lightless · ancient · hungry", price:48000000,
       sky:["#0d0a1a","#171226","#1e1c32","#2a2440"], cloud:"rgba(20,16,34,.6)",
       water:["#1e2c4a","#12203a","#081426","#030a16","#010208"], sun:"#8a8ea8", sunGlow:"rgba(140,150,190,.25)",
       shine:"140,150,190", sunK:0.7, shadow:"cold" },
-    { name:"The Hadal Garden", sub:"the cold ends · the lights are kind", price:560000000,
+    { name:"The Hadal Garden", sub:"the cold ends · the lights are kind", price:120000000,
       sky:["#050308","#0a0710","#120a14","#241016"], cloud:"rgba(30,20,26,.5)",
       water:["#160f1e","#100a18","#0a0612","#050309","#020103"], sun:"#ffb96b", sunGlow:"rgba(255,150,80,.35)",
       shine:"255,150,90", sunK:0.55, shadow:"warm", embers:true },
@@ -373,13 +682,74 @@
     { name:"Reef Tank",       price:300000,   max:2, sub:"room for sharks and rays" },
     { name:"Leviathan Vault", price:30000000, max:3, sub:"dark glass for old souls" },
   ];
+  // the boathouse: hull paints and knitwear, worn with pride, bought with gold
+  const BOATS = [
+    { ic:"🛶", name:"The Old Dory",     sub:"grandpa's boat, as she was", price:0,
+      hull:["#9a6338","#5e3a20"], trim:"rgba(255,225,190,.35)" },
+    { ic:"🎨", name:"Teal Skiff",       sub:"fresh paint, same old creak", price:25000,
+      hull:["#3f8e8a","#1e5450"], trim:"rgba(220,255,245,.4)" },
+    { ic:"🌸", name:"Rose Dawn",        sub:"pink as the morning she left port", price:750000,
+      hull:["#c4738a","#7a3a52"], trim:"rgba(255,225,235,.45)" },
+    { ic:"🌙", name:"Midnight Lacquer", sub:"quiet, dark, and very smooth", price:8000000,
+      hull:["#2e3a5e","#141c34"], trim:"rgba(255,206,74,.5)" },
+    { ic:"👑", name:"Golden Barge",     sub:"subtlety is for the fish", price:100000000,
+      hull:["#d8a63e","#8a6318"], trim:"rgba(255,240,190,.7)" },
+  ];
+  const OUTFITS = [
+    // everyday — cheap colour swaps
+    { ic:"🔴", name:"Red Sweater",   sub:"the one grandma knitted", price:0,     kind:"knit", coat:"#c85a4a", hat:"#35507e" },
+    { ic:"🔵", name:"Blue Sweater",  sub:"washed soft by years of salt", price:8000,  kind:"knit", coat:"#4a6ec8", hat:"#c85a4a" },
+    { ic:"🟢", name:"Green Sweater", sub:"moss green, pond approved", price:8000,   kind:"knit", coat:"#4a9a5e", hat:"#2c3a2e" },
+    { ic:"🟡", name:"Yellow Sweater",sub:"bright as a fair-weather day", price:8000, kind:"knit", coat:"#d8a63e", hat:"#6e4a28" },
+    // legends — pick your favourite, same price for all (perk line shown in shop)
+    { ic:"🥷", name:"The Ninja",     sub:"silent cast, silent catch", price:25000000, kind:"ninja",     perk:"Perk: +25% predator telegraph time" },
+    { ic:"🤖", name:"The Robot",     sub:"waterproof to ten thousand leagues", price:25000000, kind:"robot",     perk:"Perk: +8% sell value on every fish" },
+    { ic:"👽", name:"The Alien",     sub:"came for the fish, stayed for the dusk", price:25000000, kind:"alien",     perk:"Perk: curious fish drift closer" },
+    { ic:"🏴‍☠️", name:"The Pirate", sub:"yo ho ho and a bottle of anchovy", price:25000000, kind:"pirate",    perk:"Perk: +15% gold from bottles" },
+    { ic:"🧙", name:"The Wizard",    sub:"the rod is merely decorative", price:25000000, kind:"wizard",    perk:"Perk: +12s thermos golden hour" },
+    { ic:"🧑‍🚀", name:"The Astronaut", sub:"one small cast for a fishkind", price:25000000, kind:"astronaut", perk:"Perk: see out-of-reach fish brighter" },
+  ];
+
+  // cosy touches for the tank — pure decoration, and somewhere for late-game gold to go
+  const DECOR = [
+    { ic:"🌿", name:"Kelp Cluster",      sub:"a soft green corner",          price:50000 },
+    { ic:"🌋", name:"Bubble Volcano",    sub:"burbles away contentedly",     price:400000 },
+    { ic:"🛶", name:"Sunken Rowboat",    sub:"retired, and resting",         price:2500000 },
+    { ic:"🏮", name:"Lantern String",    sub:"warm lights over the water",   price:12000000 },
+    { ic:"🗼", name:"Little Lighthouse", sub:"so nobody gets lost down there", price:60000000 },
+  ];
+  // repeatable harbor gifts — somewhere for late-game gold after gear is maxed
+  const HARBOR_SINKS = [
+    { id:"catTreats", ic:"🐱", name:"Cat Treats", sub:"the stern watches you with hope",
+      price:5000000, msg:"The cat remembers kindness" },
+    { id:"dockFund", ic:"🔧", name:"Dock Repair Fund", sub:"keep the creak honest",
+      price:25000000, msg:"The planks feel sturdier underfoot" },
+    { id:"fishFeast", ic:"🍞", name:"Premium Fish Food", sub:"the aquarium shimmers gratefully",
+      price:100000000, msg:"Every fish got something fancy" },
+    { id:"harborBell", ic:"🔔", name:"Harbor Bell Casting", sub:"luck for the next voyage",
+      price:500000000, msg:"A bell rings once across the water" },
+  ];
   const pondNow = () => PONDS[state.pond];
+
+  // legend outfit micro-bonuses — flavor perks, not power creep
+  const outfitNow = () => OUTFITS[state.outfit] || OUTFITS[0];
+  function perk() {
+    const k = outfitNow().kind || "knit";
+    return {
+      sellMult: k === "robot" ? 1.08 : 1,
+      bottleMult: k === "pirate" ? 1.15 : 1,
+      goldenExtra: k === "wizard" ? 12 : 0,
+      noticeScale: k === "ninja" ? 1.25 : 1,
+      reachGlow: k === "astronaut" ? 0.5 : 0.32,
+      curiousBoost: k === "alien" ? 1.4 : 1,
+    };
+  }
 
   // ---------- derived stats (all upgrade-driven; tuned to ~72h to 100%) ----------
   const reachFrac  = () => Math.min(1, 0.16 + state.lineUp * 0.028); // 30 buys -> abyss
   const catchLimit = () => 1 + state.netUp;                           // beginner = 1 per cast
   const reelSpeed  = () => 430 + state.reelUp * 95;
-  const sellMult   = () => 1 + state.hookUp * 0.08;
+  const sellMult   = () => (1 + state.hookUp * 0.08) * perk().sellMult;
   const DROP_SPEED = 300;
 
   const surfaceY   = () => H * 0.16;
@@ -388,11 +758,61 @@
 
   // ---------- fish population (each water has its own school) ----------
   let fish = [], tank = [];
+  let thermosBoostT = 0;
+
+  function chaseUncaught(pond) {
+    const id = CHASE_BY_POND[pond ?? state.pond];
+    return id && !state.collection[id] ? id : null;
+  }
+
+  function chaseSpawnChance() {
+    const id = chaseUncaught();
+    if (!id) return 0;
+    let p = 0.0005;
+    const pity = state.chasePity[state.pond] || 0;
+    p += pity * 0.00006; // soft pity — rises with casts in this water
+    if (golden > 0) p *= 5;
+    if (thermosBoostT > 0) p = Math.max(p, 0.004);
+    return Math.min(0.025, p);
+  }
+
+  function tickChasePity() {
+    const id = chaseUncaught();
+    if (!id) return;
+    state.chasePity[state.pond] = (state.chasePity[state.pond] || 0) + 1;
+  }
+
+  function resetChasePity(pond) {
+    if (state.chasePity[pond] !== undefined) state.chasePity[pond] = 0;
+  }
+
+  function spawnChaseTease() {
+    const id = chaseUncaught();
+    if (!id || state.thermosTeaseDay === todayKey()) return;
+    const s = byId[id];
+    if (!s) return;
+    state.thermosTeaseDay = todayKey();
+    fish.push({
+      s, x: -70, y: surfaceY() + rand(0.35, 0.72) * worldDepth(),
+      vx: rand(48, 62), wob: rand(0, 6.28), caught: false, tease: true, teaseT: 10,
+    });
+    showBanner("A legend passes…", s.name + " · barely seen · not today");
+    save();
+  }
+
   function makeFish() {
     const pool = SPECIES.filter(s => s.pond === state.pond);
-    let total = pool.reduce((a, s) => a + s.rare, 0);
+    // during golden hour the spawn weights flatten, so the rare ones rise
+    const w = s => golden > 0 ? Math.sqrt(s.rare) : s.rare;
+    let total = pool.reduce((a, s) => a + w(s), 0);
     let r = Math.random() * total, picked = pool[0];
-    for (const s of pool) { if ((r -= s.rare) <= 0) { picked = s; break; } }
+    for (const s of pool) { if ((r -= w(s)) <= 0) { picked = s; break; } }
+    // one ultra-rare chase fish per water — pity + golden hour help
+    const cp = chaseSpawnChance();
+    if (cp > 0 && Math.random() < cp) {
+      const chaseId = CHASE_BY_POND[state.pond];
+      if (chaseId && byId[chaseId]) picked = byId[chaseId];
+    }
     const depth = rand(picked.minD, picked.maxD);
     const dir = Math.random() < 0.5 ? 1 : -1;
     return {
@@ -403,37 +823,429 @@
     };
   }
   function ensureFish() {
-    const target = Math.round(Math.min(26, (W * worldDepth()) / 42000));
+    const cap = perfLite() ? 18 : 26;
+    const target = Math.round(Math.min(cap, (W * worldDepth()) / (perfLite() ? 55000 : 42000)));
     while (fish.length < target) fish.push(makeFish());
   }
 
   // ---------- hook ----------
   const hook = { x: 0, y: 0, tx: 0, state: "idle", caught: [] };
   let stealCd = 0, stolenThisCast = false, cam = 0, prowler = null;
+
+  // ---------- golden hour: a short window when the rare ones rise ----------
+  let golden = 0, goldenCd = rand(150, 240);
+  const GOLDEN_LEN = 75, GOLDEN_MULT = 1.5, GOLDEN_WARN = 10;
+  let celebrate = 0, thermosPending = false, decorLanternCd = 0, decorVolcanoCd = 0;
+
+  const todayKey = () => {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  };
+  function refreshThermos() { thermosPending = state.thermosDay !== todayKey(); }
+
+  const lowMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const perfLite = () => (navigator.hardwareConcurrency || 4) <= 4 || W * H < 380000;
+
+  function bumpStat(key, n = 1) {
+    if (state.analytics[key] !== undefined) state.analytics[key] += n;
+  }
+  function trackShopBuy() { bumpStat("shopBuys"); }
+
+  function gearMaxed() {
+    return state.lineUp >= 30 && state.netUp >= 11 && state.reelUp >= 10 && state.hookUp >= 30;
+  }
+
+  function scoreValue() {
+    return speciesCount() * 1000 + (state.qi || 0);
+  }
+
+  function bootNudge() {
+    if (state.nudgeDay === todayKey()) return;
+    let title = "Today on the water", sub = "";
+    if (thermosPending) sub = "Grandpa's thermos waits on your first cast";
+    else if (!journalDone()) sub = (Quests.cur()?.hint || "turn another journal page");
+    else if (!dexComplete()) {
+      const n = speciesCount();
+      const next = [10, 25, 45].find(m => m > n);
+      if (next) sub = (next - n) + " species until " + next + "/45";
+    } else if (state.pages.length < EXTRA_PAGES.length)
+      sub = (EXTRA_PAGES.length - state.pages.length) + " extra pages still out there";
+    else if (!state.boatName) sub = "Name the boat — one line left to write";
+    else if (!fullEndgame()) sub = "The fire is yours — keep the aquarium fed";
+    else return;
+    state.nudgeDay = todayKey();
+    showBanner(title, sub);
+    save();
+  }
+
+  function applyHarborSink(s) {
+    showBanner(s.name, s.msg);
+    bumpStat("harbor");
+    if (s.id === "catTreats") catJoy = 2.8;
+    if (s.id === "fishFeast" && tank.length) {
+      for (let i = 0; i < 12; i++)
+        feedBursts.push({ x: W / 2 + rand(-40, 40), y: H * 0.45 + rand(-20, 20), v: rand(20, 48), s: rand(6, 12), life: rand(1, 1.8), ph: rand(0, 6.28) });
+      for (const f of tank) { f.seekX = W / 2; f.seekT = rand(1.5, 2.8); }
+    }
+    Snd.blip("quest");
+  }
+
+  function journalDone() { return state.qi >= QUESTS.length; }
+
+  function unlockExtraPage(trigger, data) {
+    if (!journalDone()) return null;
+    for (const p of EXTRA_PAGES) {
+      if (state.pages.includes(p.id)) continue;
+      if (p.bottle && trigger === "bottle") { state.pages.push(p.id); return p; }
+      if (p.species && trigger === "species" && p.species === data) { state.pages.push(p.id); return p; }
+    }
+    return null;
+  }
+
+  function showExtraPage(p) {
+    el("note-title").textContent = "📖 An extra page";
+    el("note-story").textContent = p.story;
+    el("note-goal").textContent = "Found after the journal ended";
+    el("note-reward").textContent = state.pages.length + " of " + EXTRA_PAGES.length + " extra pages";
+    el("note-overlay").classList.add("open");
+    Snd.blip("quest");
+  }
+
+  function openSpeciesNote(s) {
+    el("note-title").textContent = "📖 " + s.name;
+    el("note-story").textContent = SPECIES_NOTES[s.id] || "Grandpa never wrote about this one. Maybe that's yours to discover.";
+    el("note-goal").textContent = "Caught " + (state.collection[s.id] || 0) + " time(s) · tap another fish";
+    el("note-reward").textContent = speciesCount() + " of " + SPECIES.length + " species";
+    el("note-overlay").classList.add("open");
+    Snd.blip("pop");
+  }
+
+  const speciesCount = () => Object.keys(state.collection).length;
+  const dexComplete = () => speciesCount() >= SPECIES.length;
+  let dexFilter = -1; // -1 = all waters
+
+  function syncDexPill() {
+    const n = speciesCount();
+    const pill = el("dex-count");
+    if (pill) pill.textContent = n + "/" + SPECIES.length;
+  }
+
+  function renderDex() {
+    const grid = el("dex-grid"), filters = el("dex-filters");
+    const n = speciesCount();
+    el("dex-sub").textContent = n + " of " + SPECIES.length + " species discovered"
+      + (n < SPECIES.length ? " · tap ? for hints" : " · complete!");
+    filters.innerHTML = "";
+    const mkFilter = (label, pond) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.className = dexFilter === pond ? "on" : "";
+      b.addEventListener("click", () => { dexFilter = pond; renderDex(); });
+      filters.appendChild(b);
+    };
+    mkFilter("All", -1);
+    const pondShort = (p) => p.name.startsWith("The ") ? p.name.slice(4) : p.name.split(" ")[0];
+    PONDS.forEach((p, i) => mkFilter(pondShort(p), i));
+    grid.innerHTML = "";
+    const list = dexFilter < 0 ? SPECIES : SPECIES.filter(s => s.pond === dexFilter);
+    for (const s of list) {
+      const caught = !!state.collection[s.id];
+      const cell = document.createElement("div");
+      cell.className = "dex-cell" + (caught ? " on" : "") + (s.chase && !caught ? " chase-miss" : "");
+      const dot = document.createElement("div");
+      dot.className = "dot" + (caught ? "" : " miss");
+      if (caught) {
+        dot.style.background = "radial-gradient(circle at 35% 30%, " + shade(s.color, 0.4) + ", " + s.color + ")";
+        dot.style.boxShadow = "inset 0 0 0 2px rgba(0,0,0,.15)";
+        dot.textContent = "";
+      } else dot.textContent = "?";
+      const name = document.createElement("b");
+      if (caught) name.textContent = s.name;
+      else if (s.chase) name.textContent = s.name;
+      else name.textContent = "???";
+      cell.appendChild(dot);
+      cell.appendChild(name);
+      if (s.chase && !caught) {
+        const sub = document.createElement("span");
+        sub.className = "subtag";
+        sub.textContent = "not yet seen · chase";
+        cell.appendChild(sub);
+      }
+      if (s.chase) {
+        const tag = document.createElement("span");
+        tag.className = "tag"; tag.textContent = "⭐"; tag.title = "Chase fish";
+        cell.appendChild(tag);
+      }
+      cell.addEventListener("click", () => {
+        if (caught) {
+          el("dex-overlay").classList.remove("open");
+          openSpeciesNote(s);
+        } else {
+          el("note-title").textContent = "📖 " + s.name + " — not yet";
+          el("note-story").textContent = s.chase
+            ? "A legendary chase fish in " + PONDS[s.pond].name + ". Grandpa said it barely shows — golden hour and patience help."
+            : "Swims in " + PONDS[s.pond].name + ". Reach deeper, wait for golden hour, or try a new water.";
+          el("note-goal").textContent = s.chase ? "⭐ Chase fish · ultra rare" : PONDS[s.pond].name;
+          el("note-reward").textContent = speciesCount() + " of " + SPECIES.length + " found so far";
+          el("dex-overlay").classList.remove("open");
+          el("note-overlay").classList.add("open");
+        }
+      });
+      grid.appendChild(cell);
+    }
+  }
+
+  function openDex() { renderDex(); el("dex-overlay").classList.add("open"); }
+
+  const ENDGAME_LINES = [
+    "You filled every page grandpa left blank.",
+    "Forty-five species swim in your glass rooms now — from the tiniest anchovy to The Old Lantern, who only wanted to see who kept the fire.",
+  ];
+
+  function fullEndgame() {
+    return dexComplete() && journalDone()
+      && state.pages.length >= EXTRA_PAGES.length && !!state.boatName;
+  }
+
+  function showEndgame(fromLoad) {
+    const lines = [...ENDGAME_LINES];
+    if (state.boatName) lines.push("You named her " + state.boatName + ". Grandpa would've liked that.");
+    if (state.pages.length >= EXTRA_PAGES.length)
+      lines.push("Every extra page turned up — even the ones he hid in bottles and legends.");
+    lines.push(
+      "The cat dozes on the dory. The thermos is empty. The journal is full.",
+      "The sea doesn't keep score, kid. But you did — and you won nothing except the quiet pride of knowing every name.",
+      "Grandma would've liked the aquarium. She said it was vanity. You proved it was love with a glass wall.",
+      "If there's a next page, you're the one who writes it.",
+    );
+    el("credits-body").innerHTML = lines.map(t => "<p>\u201C" + t + "\u201D</p>").join("")
+      + "<p class=\"sig\">— Grandpa's journal, passed to you</p>";
+    el("credits-title").textContent = fullEndgame() ? "The fire is yours" : "The journal is full";
+    el("credits-sub").textContent = "45 of 45 species"
+      + (state.pages.length ? " · " + state.pages.length + "/" + EXTRA_PAGES.length + " extra pages" : "")
+      + (state.boatName ? " · " + state.boatName : "")
+      + " · the story continues";
+    if (!fromLoad) {
+      celebrate = 5;
+      showBanner(fullEndgame() ? "Everything complete!" : "Journal complete!", "every species in the book");
+      for (let i = 0; i < 24; i++)
+        floats.push({ x: W / 2 + rand(-120, 120), y: surfaceY() + rand(10, 80), txt: i % 4 ? "✨" : "🐟", color: i % 4 ? "#ffe07a" : "#9fe8c9", life: 2.2 });
+      [261.6, 329.6, 392, 523.3, 659.3, 784, 1046.5].forEach((f, i) => Snd.tone(f, 0.32, 0.024, "sine", i * 0.11));
+      setTimeout(() => el("credits-overlay").classList.add("open"), fromLoad ? 0 : 2400);
+    } else el("credits-overlay").classList.add("open");
+  }
+
+  function checkEndgame(wasNewDex) {
+    if (!dexComplete() || state.endgameSeen) return;
+    if (!wasNewDex && speciesCount() < SPECIES.length) return;
+    state.endgameSeen = true;
+    save();
+    showEndgame(false);
+  }
+
+  const DEDICATION_NAMES = ["The Old Dory", "Firekeeper", "Slow Tide", "Grandpa's Hope", "Evening Light"];
+
+  function openDedication() {
+    const picks = el("dedication-picks");
+    picks.innerHTML = "";
+    for (const n of DEDICATION_NAMES) {
+      const b = document.createElement("button");
+      b.textContent = n;
+      b.addEventListener("click", () => { el("boat-name-input").value = n; });
+      picks.appendChild(b);
+    }
+    el("boat-name-input").value = state.boatName || "";
+    el("dedication-overlay").classList.add("open");
+  }
+
+  function saveDedication() {
+    const name = (el("boat-name-input").value || "The Old Dory").trim().slice(0, 24);
+    state.boatName = name || "The Old Dory";
+    state.journalFinaleSeen = true;
+    el("dedication-overlay").classList.remove("open");
+    syncBrand();
+    showBanner("She's the " + state.boatName, "the last line is written");
+    celebrate = 2.5;
+    save();
+    if (dexComplete() && !state.endgameSeen) checkEndgame(false);
+  }
+
+  function checkJournalFinale() {
+    if (!journalDone() || state.journalFinaleSeen || state.boatName) return;
+    celebrate = 3;
+    showBanner("The journal is complete!", "one last line is yours to write");
+    Snd.blip("quest");
+    setTimeout(openDedication, 2200);
+  }
+
+  function checkBragMilestones(before, after) {
+    for (const m of [10, 25]) {
+      if (before < m && after >= m && !state.bragSeen.includes(m)) {
+        state.bragSeen.push(m);
+        showBanner(m + " species!", "your journal is really filling up");
+        sendScore();
+        if (!lowMotion()) celebrate = 2;
+        Snd.blip("quest");
+        save();
+      }
+    }
+  }
+
+  function syncPredWarn() {
+    const pw = el("pred-warn");
+    if (!pw) return;
+    if (state.view !== "fish" || !prowler || !prowler.aggro || prowler.aggro.phase !== "notice"
+        || hook.state === "idle" || hook.caught.length === 0) {
+      pw.classList.remove("show"); return;
+    }
+    const sy = hook.y - cam;
+    pw.style.left = Math.max(8, Math.min(W - 30, hook.x - 11)) + "px";
+    pw.style.top = Math.max(52, sy - 30) + "px";
+    pw.classList.add("show");
+  }
+
+  function syncRoomHint() {
+    const h = el("room-tap-hint");
+    if (!h) return;
+    h.classList.toggle("show", state.view === "room" && speciesCount() > 0);
+  }
+
+  function showPostcard(i) {
+    if (state.postcardsSeen.includes(i)) return;
+    state.postcardsSeen.push(i);
+    const p = POSTCARDS[i];
+    el("postcard-art").textContent = p.art;
+    el("postcard-title").textContent = p.title;
+    el("postcard-quote").textContent = "\u201C" + p.quote + "\u201D";
+    el("postcard-overlay").classList.add("open");
+    save();
+  }
+
+  // ---------- messages in bottles: torn journal pages adrift on the surface ----------
+  const BOTTLE_NOTES = [
+    "Some days the water gives you nothing but quiet. Those days count too.",
+    "Your grandma never fished. She just liked watching me miss.",
+    "The trick to patience is forgetting that you're waiting.",
+    "Salt on the line keeps the luck in. That's a lie, but it smells right.",
+    "I fought a squid over a sandwich once. We're friends now.",
+    "If the fog comes in, sing to it. It likes that.",
+    "Small fish aren't small luck.",
+    "Every lantern I ever lit, I lit for somebody.",
+    "Row out far enough and the noise of everything else forgets your name.",
+    "The sea doesn't keep score, kid. That's what makes it home.",
+  ];
+  let bottle = null, bottleCd = rand(50, 100), catJoy = 0;
+  const bottleY = () => surfaceY() + 7 + Math.sin(T * 2 + (bottle ? bottle.wob : 0)) * 2.5;
+  function spawnBottle() {
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    bottle = { x: dir === 1 ? -24 : W + 24, vx: dir * rand(10, 17), wob: rand(0, 6.28), caught: false };
+  }
+  function openBottle() {
+    const pool = SPECIES.filter(s => s.pond === state.pond);
+    const top = pool.reduce((a, s) => Math.max(a, s.gold), 0);
+    let reward = Math.round(25 + top * 0.75);
+    reward = Math.round(reward * perk().bottleMult);
+    state.gold += reward;
+    state.bottlesOpened++;
+    catJoy = 2;
+    el("note-title").textContent = "🍾 A Message in a Bottle";
+    el("note-story").textContent = "\u201C" + BOTTLE_NOTES[Math.floor(Math.random() * BOTTLE_NOTES.length)] + "\u201D";
+    el("note-goal").textContent = "A torn page, in grandpa's hand";
+    el("note-reward").textContent = "+$" + reward.toLocaleString();
+    el("note-overlay").classList.add("open");
+    Snd.blip("quest");
+    const ep = unlockExtraPage("bottle");
+    if (ep) setTimeout(() => showExtraPage(ep), 2200);
+    save(); syncHud(); syncQuest();
+  }
+
+  // ---------- score: species discovered (0–45), mirrors the aquarium ----------
+  let bestScoreSent = 0;
+  function sendScore() {
+    if (!YT) return;
+    const n = scoreValue();
+    if (n > bestScoreSent) { bestScoreSent = n; YT.engagement.sendScore({ value: n }).catch(() => {}); }
+  }
+
   function cast() {
-    if (state.view !== "fish") return;
+    if (state.view !== "fish" || paused) return;
     if (hook.state === "idle") {
+      if (thermosPending) { // first cast each day — grandpa's thermos ritual
+        thermosPending = false;
+        state.thermosDay = todayKey();
+        bumpStat("thermos");
+        golden = 120 + perk().goldenExtra;
+        goldenCd = 9999;
+        thermosBoostT = 120 + perk().goldenExtra;
+        spawnChaseTease();
+        showBanner("Grandpa's thermos", THERMOS_LINES[Math.floor(Math.random() * THERMOS_LINES.length)]
+          + " · pauses random golden hour");
+        save();
+      }
+      tickChasePity();
+      tutBeatCast();
+      bumpStat("casts");
       hook.state = "dropping"; hook.y = surfaceY(); hook.caught = [];
       stolenThisCast = false; hideHint(); Snd.blip("splash");
     }
-    else if (hook.state === "dropping") { hook.state = "reeling"; }
+    else if (hook.state === "dropping") { hook.state = "reeling"; tutOnReel(); }
   }
   // no keep-or-sell — the haul banks itself, new species swim straight home
   function resolveCatch() {
     const got = hook.caught;
     hook.caught = []; hook.state = "idle";
     fish = fish.filter(f => !f.caught); // free their slots so the sea restocks
+    if (bottle && bottle.caught) { // the page comes up with the haul
+      bottle = null; bottleCd = rand(90, 160);
+      openBottle();
+    }
     if (got.length) {
+      const firstEver = Object.keys(state.collection).length === 0;
+      const speciesBefore = speciesCount();
       let sum = 0; const news = [];
       for (const f of got) {
-        sum += Math.round(f.s.gold * sellMult());
-        if (!state.collection[f.s.id]) news.push(f.s.name);
+        let v = f.s.gold * sellMult();
+        if (f.s.pred) v *= 1.5;           // a predator on the line pays for the nerve
+        if (golden > 0) v *= GOLDEN_MULT; // golden hour
+        sum += Math.round(v);
+        const wasNew = !state.collection[f.s.id];
+        if (wasNew) news.push(f.s.name);
         state.collection[f.s.id] = (state.collection[f.s.id] || 0) + 1;
+        if (wasNew && f.s.chase) {
+          showBanner("Chase fish!", f.s.name + " — a legend of these waters");
+          resetChasePity(f.s.pond);
+          bumpStat("chase");
+        }
+        if (wasNew) {
+          const ep = unlockExtraPage("species", f.s.id);
+          if (ep) setTimeout(() => showExtraPage(ep), 1800);
+        }
       }
+      // full net: every dot lit in one cast pays a little extra
+      const fullNet = catchLimit() >= 2 && got.length >= catchLimit();
+      if (fullNet) sum = Math.round(sum * 1.25);
       state.gold += sum;
+      bumpStat("caught", got.length);
+      bumpStat("goldIn", sum);
       floatText(hook.x, surfaceY() + 34, "+$" + sum.toLocaleString(), "#ffce4a");
+      if (fullNet) floatText(hook.x, surfaceY() + 54, "Full net! +25%", "#9fe8c9");
       Snd.blip("coin");
-      if (news.length) { showBanner("New species!", news.join(" · ")); rebuildTank(); }
+      if (sum > 0) tutBeatGold();
+      if (firstEver) { // the moment the whole trip begins
+        celebrate = 2.8;
+        showBanner("Your first fish!", "the whole trip begins here");
+        for (let i = 0; i < 10; i++)
+          floats.push({ x: hook.x + rand(-56, 56), y: surfaceY() + rand(6, 50), txt: i % 3 ? "✨" : "♥", color: i % 3 ? "#ffe07a" : "#ff8fb0", life: 1.8 });
+        [392, 523.3, 659.3, 784, 1046.5].forEach((f, i) => Snd.tone(f, 0.28, 0.026, "triangle", i * 0.09));
+      }
+      if (news.length) {
+        showBanner("New species!", news.join(" · "));
+        rebuildTank(); sendScore(); syncDexPill();
+        checkBragMilestones(speciesBefore, speciesCount());
+        tutBeatSpecies();
+        if (speciesCount() >= SPECIES.length) checkEndgame(true);
+      }
+      if (fullNet || news.length) catJoy = 1.6; // the cat approves
       Quests.event("haul", got.length, !stolenThisCast);
       Quests.check();
       save();
@@ -449,12 +1261,12 @@
   function tryCatch() {
     if (hook.caught.length >= catchLimit()) return;
     for (const f of fish) {
-      if (f.caught || f.prowl) continue; // a lunging predator can't be hooked — dodge it
+      if (f.caught || f.prowl || f.tease) continue; // tease legends can't be hooked
       const dx = f.x - hook.x, dy = f.y - hook.y;
       if (dx * dx + dy * dy < (f.s.size * 0.85 + 13) ** 2) {
         f.caught = true; f.prowl = false; f.ox = dx * 0.3; f.oy = f.s.size * 0.5;
         hook.caught.push(f);
-        floatText(f.x, f.y - f.s.size, f.s.name, f.s.color);
+        floatText(f.x, f.y - f.s.size, f.s.pred ? f.s.name + " +50%!" : f.s.name, f.s.color);
         Snd.blip("pop");
         if (hook.caught.length >= catchLimit()) break;
       }
@@ -465,9 +1277,19 @@
   // ---------- input ----------
   function toStage(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   const clampX = (x) => Math.max(26, Math.min(W - 26, x));
-  cv.addEventListener("pointermove", (e) => { hook.tx = clampX(toStage(e).x); });
-  cv.addEventListener("pointerdown", (e) => { if (state.view !== "fish") return; hook.tx = clampX(toStage(e).x); cast(); });
-  window.addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); cast(); } });
+  cv.addEventListener("pointermove", (e) => { if (!paused) hook.tx = clampX(toStage(e).x); });
+  cv.addEventListener("pointerdown", (e) => {
+    if (paused) return;
+    const p = toStage(e);
+    if (state.view === "room") { if (tapTankFish(p.x, p.y)) return; feedTank(p.x, p.y); return; }
+    hook.tx = clampX(p.x); cast();
+  });
+  window.addEventListener("keydown", (e) => {
+    if (paused) return;
+    if (e.code === "Space") { e.preventDefault(); cast(); }
+    else if (e.code === "ArrowLeft") { e.preventDefault(); hook.tx = clampX(hook.tx - 28); }
+    else if (e.code === "ArrowRight") { e.preventDefault(); hook.tx = clampX(hook.tx + 28); }
+  });
 
   // ---------- HUD ----------
   const el = (id) => document.getElementById(id);
@@ -481,6 +1303,7 @@
   function syncHud() {
     goldEl.textContent = fmtGold(state.gold);
     reachEl.textContent = Math.round(reachFrac() * 100) + "%";
+    syncDexPill();
     const lim = catchLimit();
     if (dotsEl.childElementCount !== lim) {
       dotsEl.innerHTML = "";
@@ -490,6 +1313,19 @@
     [...dotsEl.children].forEach((d, i) => d.classList.toggle("on", i < got));
     castBtn.textContent = hook.state === "idle" ? "Cast" : "Reel";
     castBtn.classList.toggle("reeling", hook.state !== "idle");
+    const warnEl = el("golden-warn");
+    if (golden > 0) {
+      warnEl.classList.add("show");
+      if (thermosBoostT > 0 && goldenCd > 500)
+        warnEl.textContent = "☕ thermos golden · random golden paused · ×" + GOLDEN_MULT;
+      else if (thermosBoostT > 0)
+        warnEl.textContent = "☕ thermos golden · ×" + GOLDEN_MULT;
+      else
+        warnEl.textContent = "✨ golden hour · ×" + GOLDEN_MULT;
+    } else if (goldenCd <= GOLDEN_WARN && goldenCd > 0 && goldenCd < 9000) {
+      warnEl.classList.add("show");
+      warnEl.textContent = "✨ golden hour in " + Math.ceil(goldenCd) + "s";
+    } else warnEl.classList.remove("show");
   }
 
   let hintHidden = false;
@@ -497,37 +1333,88 @@
 
   function syncBrand() {
     const b = document.querySelector(".brand span");
-    if (b) b.textContent = state.pond === 0 ? "a cozy little fishing trip" : pondNow().name.toLowerCase();
+    if (!b) return;
+    if (state.boatName) b.textContent = state.boatName.toLowerCase();
+    else b.textContent = state.pond === 0 ? "a cozy little fishing trip" : pondNow().name.toLowerCase();
   }
 
-  // ---------- sound: every water sings its own song ----------
+  // ---------- first-session tutorial: three gentle nudges ----------
+  const tutEl = () => el("tut-callout");
+  const shopBtn = () => el("btn-shop");
+  const roomTab = () => el("tab-room");
+
+  function tutBeatCast() {
+    if (state.tut.cast) return;
+    state.tut.cast = true; save();
+    castBtn.classList.add("tut-pulse");
+    tutEl().textContent = "Tap Reel when your hook is deep enough";
+    tutEl().classList.add("show");
+  }
+  function tutBeatGold() {
+    if (state.tut.gold) return;
+    state.tut.gold = true; save();
+    shopBtn().classList.add("tut-bounce");
+    tutEl().textContent = "Every catch earns gold — try the Shop";
+    tutEl().classList.add("show");
+  }
+  function tutBeatSpecies() {
+    if (state.tut.species) return;
+    state.tut.species = true; save();
+    roomTab().classList.add("tut-glow");
+    tutEl().textContent = "Room tab — new species swim home here";
+    tutEl().classList.add("show");
+  }
+  function tutOnReel() {
+    if (!state.tut.cast || state.tut.gold) return;
+    tutEl().textContent = "Fish touching your hook come up with the line";
+  }
+  function tutDismissPartial() {
+    castBtn.classList.remove("tut-pulse");
+    shopBtn().classList.remove("tut-bounce");
+  }
+  function tutDismissAll() {
+    tutDismissPartial();
+    roomTab().classList.remove("tut-glow");
+    tutEl().classList.remove("show");
+  }
+
+  // ---------- sound: every water sings its own song (sine drones + filtered plinks) ----------
   const MOODS = [
-    { chord: [174.6, 220.0, 261.6], scale: [523.3, 587.3, 659.3, 784, 880],   lp: 640, plink: [2.5, 6] },   // backyard: warm dusk
-    { chord: [196.0, 246.9, 293.7], scale: [587.3, 659.3, 784, 880, 1174.7],  lp: 820, plink: [1.8, 4.5] }, // garden: bright, ornamental
-    { chord: [164.8, 196.0, 246.9], scale: [493.9, 587.3, 659.3, 740, 880],   lp: 700, plink: [2, 5] },     // kelp: green and swaying
-    { chord: [146.8, 220.0, 293.7], scale: [440, 523.3, 587.3, 659.3, 880],   lp: 500, plink: [3, 7] },     // sea: open fifths, wide
-    { chord: [220.0, 277.2, 329.6], scale: [880, 1046.5, 1174.7, 1318.5],     lp: 900, plink: [2.2, 5.5] }, // fjord: glassy, aurora-bright
-    { chord: [55.0, 55.7, 82.4],    scale: [110, 130.8, 164.8],               lp: 220, plink: [4, 9] },     // trench: cold, enormous
-    { chord: [65.4, 98.0, 130.8],   scale: [261.6, 329.6, 392, 523.3],        lp: 380, plink: [3, 7] },     // hadal: dark, but warm — a hearth at the bottom of the world
+    { chord:[174.6,220,261.6],   scale:[523.3,587.3,659.3,784,880],     lp:720, hp:70,  plink:[3.5,7],   drone:0.11 }, // backyard: warm dusk
+    { chord:[196,246.9,293.7],   scale:[587.3,659.3,784,880,1174.7],    lp:880, hp:80,  plink:[2.5,5.5], drone:0.10 }, // garden: bright ornamental
+    { chord:[164.8,196,246.9],   scale:[493.9,587.3,659.3,740,880],     lp:760, hp:65,  plink:[2.8,6],   drone:0.11 }, // kelp: green sway
+    { chord:[146.8,220,293.7],   scale:[440,523.3,587.3,659.3,880],     lp:620, hp:55,  plink:[3.2,7],   drone:0.12 }, // open sea: wide fifths
+    { chord:[220,277.2,329.6],   scale:[880,1046.5,1174.7,1318.5],      lp:980, hp:90,  plink:[2.5,5.5], drone:0.09 }, // fjord: glassy aurora
+    { chord:[41.2,61.7,82.4],    scale:[82.4,98,123.5,164.8],          lp:240, hp:38,  plink:[6,12],  drone:0.14 }, // trench: deep sub, sparse
+    { chord:[49,73.4,98],        scale:[196,246.9,293.7,392,523.3],     lp:380, hp:42,  plink:[4,9],   drone:0.13 }, // hadal: dark hearth glow
   ];
+  // YouTube's own mute switch: when it is off, no sound may play and the
+  // in-game mute button must not be able to force audio back on.
+  let ytAudio = YT ? YT.system.isAudioEnabled() : true;
+  const audioBlocked = () => state.muted || !ytAudio;
   const Snd = {
-    ac: null, oscs: [], gain: null, lp: null, mood: -1, plinkTimer: 0,
+    ac: null, oscs: [], oscG: [], gain: null, sfx: null, hp: null, lp: null, mood: -1, plinkTimer: 0,
     unlock() {
-      if (this.ac || state.muted) return;
+      if (this.ac || audioBlocked()) return;
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
         if (!AC) return;
         this.ac = new AC();
         this.gain = this.ac.createGain(); this.gain.gain.value = 0;
-        this.lp = this.ac.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.frequency.value = 640;
-        this.gain.connect(this.lp); this.lp.connect(this.ac.destination);
-        for (const f of MOODS[0].chord) {
+        this.sfx = this.ac.createGain(); this.sfx.gain.value = 0.75;
+        this.hp = this.ac.createBiquadFilter(); this.hp.type = "highpass"; this.hp.frequency.value = 70;
+        this.lp = this.ac.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.frequency.value = 720;
+        this.hp.connect(this.lp); this.lp.connect(this.ac.destination);
+        this.gain.connect(this.hp);
+        this.sfx.connect(this.lp); // plinks and blips share the same warmth — no harsh bypass
+        const M0 = MOODS[0], v = M0.drone / 3;
+        for (const f of M0.chord) {
           const o = this.ac.createOscillator(), og = this.ac.createGain();
-          o.type = "triangle"; o.frequency.value = f; og.gain.value = 0.33;
+          o.type = "sine"; o.frequency.value = f; og.gain.value = v;
           o.connect(og); og.connect(this.gain); o.start();
-          this.oscs.push(o);
+          this.oscs.push(o); this.oscG.push(og);
         }
-        this.gain.gain.linearRampToValueAtTime(0.035, this.ac.currentTime + 3);
+        this.gain.gain.linearRampToValueAtTime(0.028, this.ac.currentTime + 3);
         this.mood = -1;
         this.setMood(state.pond);
         this.schedulePlink();
@@ -537,52 +1424,61 @@
       if (p === this.mood) return;
       this.mood = p;
       if (!this.ac) return;
-      const t = this.ac.currentTime, M = MOODS[p];
-      this.oscs.forEach((o, i) => { try { o.frequency.exponentialRampToValueAtTime(M.chord[i], t + 3.5); } catch (e) {} });
-      try { this.lp.frequency.linearRampToValueAtTime(M.lp, t + 3.5); } catch (e) {}
+      const t = this.ac.currentTime, M = MOODS[p], v = M.drone / 3;
+      this.oscs.forEach((o, i) => { try { o.frequency.exponentialRampToValueAtTime(M.chord[i], t + 4); } catch (e) {} });
+      this.oscG.forEach((og) => { try { og.gain.linearRampToValueAtTime(v, t + 4); } catch (e) {} });
+      try { this.lp.frequency.linearRampToValueAtTime(M.lp, t + 4); } catch (e) {}
+      try { this.hp.frequency.linearRampToValueAtTime(M.hp, t + 4); } catch (e) {}
       if (p === 5) this.blip("boom");
-      else if (p === 6) { this.tone(65.4, 2.4, 0.05, "sine"); this.tone(98, 2.0, 0.03, "sine", 0.15); }
-      this.schedulePlink(); // re-pace the ambience to the new water
+      else if (p === 6) { this.tone(49, 2.6, 0.04, "sine"); this.tone(73.4, 2.0, 0.028, "sine", 0.2); }
+      this.schedulePlink();
     },
     schedulePlink() {
       clearTimeout(this.plinkTimer);
       const M = MOODS[Math.max(0, this.mood)];
       this.plinkTimer = setTimeout(() => {
-        if (this.ac && !state.muted && document.visibilityState === "visible") {
-          const MM = MOODS[Math.max(0, this.mood)]; // resolve fresh — the water may have changed since arming
+        if (this.ac && !audioBlocked() && !paused) {
+          const MM = MOODS[Math.max(0, this.mood)];
           const f = MM.scale[Math.floor(Math.random() * MM.scale.length)];
-          this.tone(f, 0.9, 0.014, this.mood >= 5 ? "sine" : "triangle");
+          const vol = this.mood >= 5 ? 0.009 : 0.011; // deep waters: quieter, farther-off plinks
+          this.tone(f, this.mood >= 5 ? 1.4 : 0.85, vol, "sine");
         }
         this.schedulePlink();
       }, (M.plink[0] + Math.random() * (M.plink[1] - M.plink[0])) * 1000);
     },
     tone(f, dur, vol, type, when) {
-      if (!this.ac || state.muted) return;
+      if (!this.ac || audioBlocked()) return;
       try {
         const t = this.ac.currentTime + (when || 0);
         const o = this.ac.createOscillator(), g = this.ac.createGain();
         o.type = type || "sine"; o.frequency.value = f;
         g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        o.connect(g); g.connect(this.ac.destination);
-        o.start(t); o.stop(t + dur);
+        o.connect(g); g.connect(this.sfx);
+        o.start(t); o.stop(t + dur + 0.05);
       } catch (e) {}
     },
     blip(kind) {
-      if (!this.ac || state.muted) return;
-      if (kind === "splash") { this.tone(320, 0.12, 0.02, "triangle"); this.tone(180, 0.2, 0.015, "sine", 0.03); }
-      else if (kind === "pop") this.tone(660, 0.07, 0.02, "sine");
-      else if (kind === "coin") { this.tone(880, 0.06, 0.018, "square"); this.tone(1318.5, 0.09, 0.014, "square", 0.06); }
-      else if (kind === "bite") { this.tone(110, 0.16, 0.05, "sawtooth"); this.tone(72, 0.22, 0.04, "sawtooth", 0.05); }
-      else if (kind === "quest") { [523.3, 659.3, 784].forEach((f, i) => this.tone(f, 0.14, 0.02, "triangle", i * 0.09)); }
-      else if (kind === "boom") { this.tone(48, 1.6, 0.09, "sine"); this.tone(36, 2.2, 0.06, "sine", 0.1); }
+      if (!this.ac || audioBlocked()) return;
+      if (kind === "splash") { this.tone(320, 0.12, 0.018, "sine"); this.tone(180, 0.2, 0.012, "sine", 0.03); }
+      else if (kind === "pop") this.tone(660, 0.07, 0.016, "sine");
+      else if (kind === "coin") { this.tone(880, 0.06, 0.014, "sine"); this.tone(1318.5, 0.09, 0.011, "sine", 0.06); }
+      else if (kind === "bite") { this.tone(110, 0.16, 0.035, "sine"); this.tone(72, 0.22, 0.028, "sine", 0.05); }
+      else if (kind === "quest") { [523.3, 659.3, 784].forEach((f, i) => this.tone(f, 0.14, 0.016, "sine", i * 0.09)); }
+      else if (kind === "boom") { this.tone(41.2, 2.0, 0.07, "sine"); this.tone(30.9, 2.8, 0.045, "sine", 0.12); }
     },
     setMuted(m) {
       state.muted = m;
-      if (this.ac) this.ac[m ? "suspend" : "resume"]();
-      else if (!m) this.unlock();
+      this.applyAudio();
+    },
+    // one gate for every audio switch: in-game mute, YouTube mute, pause
+    applyAudio() {
+      const off = audioBlocked() || paused;
+      if (this.ac) this.ac[off ? "suspend" : "resume"]();
+      else if (!off) this.unlock();
     },
   };
   window.addEventListener("pointerdown", () => Snd.unlock(), { once: false });
+  if (YT) YT.system.onAudioEnabledChange((on) => { ytAudio = on; Snd.applyAudio(); });
 
   // ---------- grandpa's journal: story-paced goals so progress never feels like saving ----------
   const QUESTS = [
@@ -609,15 +1505,15 @@
     { story: "'A unicorn lives up there. I am not joking, kid.'", hint: "Catch a Narwhal", goal: { species: "narwhal", n: 1 }, reward: 900000 },
     { story: "'Something older than the trench patrols under the ice. It took my biggest catch and my second-best hat.'", hint: "Catch a Greenland Shark", goal: { species: "gshark", n: 1 }, reward: 2200000 },
     { story: "The ink shakes here: 'I heard it sing once. Deeper than sound. Reach further than I did.'", hint: "Max out the Longer Line", goal: { gear: "lineUp", n: 30 }, reward: 1500000 },
-    { story: "'Save everything. The trench does not haggle.'", hint: "Buy The Trench", goal: { pond: 5 }, reward: 8000000 },
-    { story: "'The coelacanth is older than the trees you climbed as a boy. Show it respect.'", hint: "Catch a Coelacanth", goal: { species: "coel", n: 1 }, reward: 3000000 },
-    { story: "'The armored one bit my line clean through. Guard your haul down there.'", hint: "Catch a Dunkleosteus", goal: { species: "dunk", n: 1 }, reward: 9500000 },
-    { story: "A water-stained page: 'If you're reading this, I never caught it. Catch it for me.'", hint: "Catch The Leviathan", goal: { species: "levi", n: 1 }, reward: 30000000 },
+    { story: "'Save everything. The trench does not haggle.'", hint: "Buy The Trench", goal: { pond: 5 }, reward: 2500000 },
+    { story: "'The coelacanth is older than the trees you climbed as a boy. Show it respect.'", hint: "Catch a Coelacanth", goal: { species: "coel", n: 1 }, reward: 1000000 },
+    { story: "'The armored one bit my line clean through. Guard your haul down there.'", hint: "Catch a Dunkleosteus", goal: { species: "dunk", n: 1 }, reward: 3000000 },
+    { story: "A water-stained page: 'If you're reading this, I never caught it. Catch it for me.'", hint: "Catch The Leviathan", goal: { species: "levi", n: 1 }, reward: 9000000 },
     { story: "'…and give it a home worthy of its years.'", hint: "Own the Leviathan Vault", goal: { tank: 2 }, reward: 12000000 },
-    { story: "The handwriting changes — steadier, warmer: 'Past the dark there is a garden. The cold ends. The lights are kind.'", hint: "Buy The Hadal Garden", goal: { pond: 6 }, reward: 60000000 },
-    { story: "'The jellies down there burn like hearth coals. Catch three — they don't mind.'", hint: "Catch 3 Ember Jellies", goal: { species: "emberj", n: 3 }, reward: 15000000 },
-    { story: "The very last line: 'If the Old Lantern finds you, don't be afraid. It only wants to see who kept the fire.'", hint: "Catch The Old Lantern", goal: { species: "oldlantern", n: 1 }, reward: 80000000 },
-    { story: "The journal's final page is blank. It's yours to write now.", hint: "Discover all 45 species", goal: { dex: 45 }, reward: 100000000 },
+    { story: "The handwriting changes — steadier, warmer: 'Past the dark there is a garden. The cold ends. The lights are kind.'", hint: "Buy The Hadal Garden", goal: { pond: 6 }, reward: 18000000 },
+    { story: "'The jellies down there burn like hearth coals. Catch three — they don't mind.'", hint: "Catch 3 Ember Jellies", goal: { species: "emberj", n: 3 }, reward: 5000000 },
+    { story: "The very last line: 'If the Old Lantern finds you, don't be afraid. It only wants to see who kept the fire.'", hint: "Catch The Old Lantern", goal: { species: "oldlantern", n: 1 }, reward: 25000000 },
+    { story: "The journal's final page is blank. It's yours to write now.", hint: "Discover all 45 species", goal: { dex: 45 }, reward: 30000000 },
   ];
   const Quests = {
     cur() { return QUESTS[state.qi] || null; },
@@ -664,20 +1560,45 @@
       const q = this.cur(); if (!q) return;
       state.gold += q.reward;
       state.qi++;
+      sendScore();
+      const journalJustDone = state.qi >= QUESTS.length;
       showBanner("Journal · +$" + q.reward.toLocaleString(), this.cur() ? "a new page turns…" : "the story is yours now");
       Snd.blip("quest");
       save(); syncHud(); syncQuest();
+      if (journalJustDone) checkJournalFinale();
     },
   };
   state.qi = state.qi || 0;
   function syncQuest() {
     const pill = el("quest"), q = Quests.cur();
-    if (!q) { pill.style.display = "none"; return; }
-    pill.style.display = "";
-    pill.textContent = "📜 " + q.hint;
+    if (q) { pill.style.display = ""; pill.textContent = "📜 " + q.hint; return; }
+    if (journalDone()) {
+      pill.style.display = "";
+      const n = state.pages.length, tot = EXTRA_PAGES.length;
+      pill.textContent = n < tot ? "📖 Extra pages · " + n + "/" + tot : "📖 Journal complete";
+      return;
+    }
+    pill.style.display = "none";
   }
   function openNote() {
+    if (journalDone()) {
+      const unread = EXTRA_PAGES.find(p => !state.pages.includes(p.id));
+      if (unread) {
+        el("note-title").textContent = "📖 After the journal";
+        el("note-story").textContent = "Grandpa's story ended, but the sea keeps writing. Extra pages turn up in bottles and rare catches.";
+        el("note-goal").textContent = state.pages.length + " of " + EXTRA_PAGES.length + " extra pages found";
+        el("note-reward").textContent = unread.bottle ? "Next: another message in a bottle" : "Next: catch a " + (byId[unread.species]?.name || "legend");
+      } else {
+        el("note-title").textContent = "📖 Grandpa's Journal";
+        el("note-story").textContent = "Every page is filled. Every extra page found. The story is yours now — and the aquarium remembers.";
+        el("note-goal").textContent = Object.keys(state.collection).length + " of " + SPECIES.length + " species";
+        el("note-reward").textContent = "Thank you for keeping the fire";
+      }
+      el("note-overlay").classList.add("open");
+      return;
+    }
     const q = Quests.cur(); if (!q) return;
+    el("note-title").textContent = "📜 Grandpa's Journal";
     el("note-story").textContent = q.story;
     el("note-goal").textContent = q.hint;
     el("note-reward").textContent = "$" + q.reward.toLocaleString();
@@ -703,10 +1624,14 @@
     if (v === "room") {
       for (const f of hook.caught) f.caught = false; // the ones on the line slip free
       hook.state = "idle"; hook.caught = [];
+      if (bottle && bottle.caught) { bottle = null; bottleCd = rand(60, 120); } // it slips away too
       for (const b of bubbles) b.y = rand(H * 0.2, H * 0.75); // bubbles re-seed into tank space
       rebuildTank();
+      if (state.tut.species) { roomTab().classList.remove("tut-glow"); tutEl().classList.remove("show"); }
     }
     syncHud();
+    syncRoomHint();
+    if (v !== "fish") el("pred-warn")?.classList.remove("show");
   }
   el("tab-fish").addEventListener("click", () => setView("fish"));
   el("tab-room").addEventListener("click", () => setView("room"));
@@ -735,56 +1660,156 @@
     h.textContent = txt;
     return h;
   }
+  function shopSection(id, title, build) {
+    const wrap = document.createElement("div");
+    wrap.className = "shop-sec";
+    const folded = !!state.shopFold[id];
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "shop-sec-head";
+    head.innerHTML = "<span>" + title + "</span><span class=\"chev\">" + (folded ? "▸" : "▾") + "</span>";
+    const body = document.createElement("div");
+    body.className = "shop-sec-body";
+    body.style.display = folded ? "none" : "block";
+    build(body);
+    head.addEventListener("click", () => {
+      state.shopFold[id] = !state.shopFold[id];
+      save();
+      renderShop();
+    });
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+    return wrap;
+  }
   const priceBtn = (price, afford) =>
     `<button class="buy" ${afford ? "" : "disabled"}><span class="c">$</span>${price.toLocaleString()}</button>`;
   function renderShop() {
     shopList.innerHTML = "";
-    shopList.appendChild(sectionHead("Gear"));
-    for (const u of UPGRADES) {
-      const n = state[u.key], maxed = n >= u.max, cost = u.cost(n);
-      const btn = maxed ? `<button class="buy" disabled>Maxed</button>` : priceBtn(cost, state.gold >= cost);
-      const row = shopRow(u.ic, `${u.name} <span style="color:var(--ink-dim);font-weight:600">Lv ${n}/${u.max}</span>`, u.desc, btn);
-      if (!maxed) row.querySelector(".buy").addEventListener("click", () => {
-        if (state.gold < cost) return;
-        state.gold -= cost; state[u.key]++; save(); renderShop(); syncHud(); Quests.check();
+    shopList.appendChild(shopSection("gear", "Gear", (body) => {
+      for (const u of UPGRADES) {
+        const n = state[u.key], maxed = n >= u.max, cost = u.cost(n);
+        const btn = maxed ? `<button class="buy" disabled>Maxed</button>` : priceBtn(cost, state.gold >= cost);
+        const row = shopRow(u.ic, `${u.name} <span style="color:var(--ink-dim);font-weight:600">Lv ${n}/${u.max}</span>`, u.desc, btn);
+        if (!maxed) row.querySelector(".buy").addEventListener("click", () => {
+          if (state.gold < cost) return;
+          state.gold -= cost; state[u.key]++; trackShopBuy(); save(); renderShop(); syncHud(); Quests.check();
+        });
+        body.appendChild(row);
+      }
+    }));
+    shopList.appendChild(shopSection("waters", "Waters", (body) => {
+      PONDS.forEach((p, i) => {
+        const owned = state.pondsOwned.includes(i), here = state.pond === i;
+        const btn = here ? `<button class="buy" disabled>Here</button>`
+          : owned ? `<button class="buy">Sail</button>`
+          : priceBtn(p.price, state.gold >= p.price);
+        const row = shopRow(["🏡","⛩️","🌿","🌊","🧊","🕳️","🏮"][i], p.name, p.sub, btn);
+        if (!here) row.querySelector(".buy").addEventListener("click", () => {
+          const wasNew = !owned;
+          if (!owned) {
+            if (state.gold < p.price) return;
+            state.gold -= p.price; state.pondsOwned.push(i);
+            trackShopBuy();
+          }
+          state.pond = i; fish = []; hook.state = "idle"; hook.caught = [];
+          Snd.setMood(i);
+          save(); renderShop(); syncHud(); syncBrand();
+          Quests.check();
+          if (wasNew) showPostcard(i);
+        });
+        body.appendChild(row);
       });
-      shopList.appendChild(row);
-    }
-    shopList.appendChild(sectionHead("Waters"));
-    PONDS.forEach((p, i) => {
-      const owned = state.pondsOwned.includes(i), here = state.pond === i;
-      const btn = here ? `<button class="buy" disabled>Here</button>`
-        : owned ? `<button class="buy">Sail</button>`
-        : priceBtn(p.price, state.gold >= p.price);
-      const row = shopRow(["🏡","⛩️","🌿","🌊","🧊","🕳️","🏮"][i], p.name, p.sub, btn);
-      if (!here) row.querySelector(".buy").addEventListener("click", () => {
-        if (!owned) {
-          if (state.gold < p.price) return;
-          state.gold -= p.price; state.pondsOwned.push(i);
+    }));
+    shopList.appendChild(shopSection("aquarium", "Aquarium", (body) => {
+      TANKS.forEach((t, i) => {
+        const ownedT = state.tank >= i, next = i === state.tank + 1;
+        const btn = ownedT ? `<button class="buy" disabled>${i === state.tank ? "Yours" : "Owned"}</button>`
+          : next ? priceBtn(t.price, state.gold >= t.price)
+          : `<button class="buy" disabled>Locked</button>`;
+        const row = shopRow(["🫙","🪸","🌑"][i], t.name, t.sub, btn);
+        if (next) row.querySelector(".buy").addEventListener("click", () => {
+          if (state.gold < t.price) return;
+          state.gold -= t.price; state.tank = i; trackShopBuy(); rebuildTank();
+          save(); renderShop(); syncHud(); Quests.check();
+        });
+        body.appendChild(row);
+      });
+    }));
+    shopList.appendChild(shopSection("boathouse", "Boathouse", (body) => {
+      BOATS.forEach((b, i) => {
+        const owned = state.boatsOwned.includes(i), worn = state.boat === i;
+        const btn = worn ? `<button class="buy" disabled>Afloat</button>`
+          : owned ? `<button class="buy">Sail her</button>`
+          : priceBtn(b.price, state.gold >= b.price);
+        const row = shopRow(b.ic, b.name, b.sub, btn);
+        if (!worn) row.querySelector(".buy").addEventListener("click", () => {
+          if (!owned) {
+            if (state.gold < b.price) return;
+            state.gold -= b.price; state.boatsOwned.push(i);
+            trackShopBuy();
+          }
+          state.boat = i;
+          save(); renderShop(); syncHud();
+        });
+        body.appendChild(row);
+      });
+      OUTFITS.forEach((o, i) => {
+        const owned = state.outfitsOwned.includes(i), worn = state.outfit === i;
+        const btn = worn ? `<button class="buy" disabled>Wearing</button>`
+          : owned ? `<button class="buy">Wear it</button>`
+          : priceBtn(o.price, state.gold >= o.price);
+        const row = shopRow(o.ic, o.name, o.sub, btn);
+        if (o.perk) {
+          const p = row.querySelector(".body p");
+          p.innerHTML = o.sub + '<br><span style="color:var(--gold);font-weight:700;font-size:10px">' + o.perk + '</span>';
         }
-        state.pond = i; fish = []; hook.state = "idle"; hook.caught = [];
-        Snd.setMood(i);
-        save(); renderShop(); syncHud(); syncBrand();
-        Quests.check();
+        if (!worn) row.querySelector(".buy").addEventListener("click", () => {
+          if (!owned) {
+            if (state.gold < o.price) return;
+            state.gold -= o.price; state.outfitsOwned.push(i);
+            trackShopBuy();
+          }
+          state.outfit = i;
+          save(); renderShop(); syncHud();
+        });
+        body.appendChild(row);
       });
-      shopList.appendChild(row);
-    });
-    shopList.appendChild(sectionHead("Aquarium"));
-    TANKS.forEach((t, i) => {
-      const ownedT = state.tank >= i, next = i === state.tank + 1;
-      const btn = ownedT ? `<button class="buy" disabled>${i === state.tank ? "Yours" : "Owned"}</button>`
-        : next ? priceBtn(t.price, state.gold >= t.price)
-        : `<button class="buy" disabled>Locked</button>`;
-      const row = shopRow(["🫙","🪸","🌑"][i], t.name, t.sub, btn);
-      if (next) row.querySelector(".buy").addEventListener("click", () => {
-        if (state.gold < t.price) return;
-        state.gold -= t.price; state.tank = i; rebuildTank();
-        save(); renderShop(); syncHud(); Quests.check();
+    }));
+    shopList.appendChild(shopSection("decor", "Aquarium Decor", (body) => {
+      DECOR.forEach((d, i) => {
+        const owned = state.decor.includes(i);
+        const btn = owned ? `<button class="buy" disabled>Placed</button>` : priceBtn(d.price, state.gold >= d.price);
+        const row = shopRow(d.ic, d.name, d.sub, btn);
+        if (!owned) row.querySelector(".buy").addEventListener("click", () => {
+          if (state.gold < d.price) return;
+          state.gold -= d.price; state.decor.push(i); trackShopBuy();
+          save(); renderShop(); syncHud();
+        });
+        body.appendChild(row);
       });
-      shopList.appendChild(row);
-    });
+    }));
+    if (gearMaxed()) {
+      shopList.appendChild(shopSection("harbor", "Harbor Gifts", (body) => {
+        const intro = document.createElement("p");
+        intro.style.cssText = "font-size:11px;color:var(--ink-dim);margin:0 2px 8px;line-height:1.45";
+        intro.textContent = "Gear is maxed — spend gold on little kindnesses. Each gift is repeatable.";
+        body.appendChild(intro);
+        for (const s of HARBOR_SINKS) {
+          const n = state.sinks[s.id] || 0;
+          const row = shopRow(s.ic, s.name + (n ? " · " + n + "×" : ""), s.sub, priceBtn(s.price, state.gold >= s.price));
+          row.querySelector(".buy").addEventListener("click", () => {
+            if (state.gold < s.price) return;
+            state.gold -= s.price;
+            state.sinks[s.id] = n + 1;
+            applyHarborSink(s);
+            save(); renderShop(); syncHud();
+          });
+          body.appendChild(row);
+        }
+      }));
+    }
   }
-  el("btn-shop").addEventListener("click", () => { renderShop(); overlay.classList.add("open"); });
+  el("btn-shop").addEventListener("click", () => { tutDismissPartial(); renderShop(); overlay.classList.add("open"); });
   el("shop-close").addEventListener("click", () => overlay.classList.remove("open"));
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
 
@@ -808,8 +1833,8 @@
 
   // ---------- resize ----------
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = stage.clientWidth; H = stage.clientHeight;
+    DPR = Math.min(window.devicePixelRatio || 1, perfLite() ? 1.5 : 2);
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     if (!hook.x) { hook.x = W / 2; hook.tx = W / 2; }
@@ -832,14 +1857,14 @@
     // stars (upper sky)
     for (const st of STARS) {
       const y = st.fy * sY;
-      const tw = 0.5 + 0.5 * Math.sin(T * 2 + st.ph);
+      const tw = lowMotion() ? 0.72 : 0.5 + 0.5 * Math.sin(T * 2 + st.ph);
       ctx.globalAlpha = (1 - st.fy / 0.62) * tw * 0.9;
       ctx.fillStyle = "#fff7e6";
       ctx.beginPath(); ctx.arc(st.fx * W, y, st.r, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    if (P.aurora) { // the sky dances green over the fjord
+    if (P.aurora && !lowMotion()) { // the sky dances green over the fjord
       ctx.save(); ctx.globalCompositeOperation = "lighter";
       const AC = ["rgba(110,255,180,.09)", "rgba(140,200,255,.07)", "rgba(200,140,255,.06)"];
       for (let b = 0; b < 3; b++) {
@@ -874,6 +1899,13 @@
         ctx.beginPath(); ctx.ellipse(cx + dx*s, cy + dy*s, r*s, r*0.7*s, 0, 0, Math.PI*2); ctx.fill();
       }
     }
+    // golden hour warms the sky before and during the window
+    if (golden > 0 || (goldenCd <= GOLDEN_WARN && goldenCd > 0)) {
+      const k = golden > 0 ? Math.min(0.38, golden / 8 * 0.38)
+        : (GOLDEN_WARN - goldenCd) / GOLDEN_WARN * 0.18;
+      ctx.fillStyle = "rgba(255,196,90," + k + ")";
+      ctx.fillRect(0, 0, W, sY);
+    }
   }
 
   function drawWater() {
@@ -896,9 +1928,10 @@
     ctx.fillStyle = warm + ".45)";
     ctx.fillRect(0, sY - 1, W, 2);
 
-    if (P.embers) { // warm sparks rise through the dark — a hearth at the bottom of the world
+    if (P.embers && !lowMotion()) { // warm sparks rise through the dark — a hearth at the bottom of the world
       ctx.save(); ctx.globalCompositeOperation = "lighter";
-      for (let i = 0; i < 18; i++) {
+      const emberN = perfLite() ? 10 : 18;
+      for (let i = 0; i < emberN; i++) {
         const spd = 8 + (i * 13) % 11;
         const ey = sY + worldDepth() - ((T * spd + i * 137) % worldDepth());
         const ex2 = ((i * 197) % W) + Math.sin(T * 0.5 + i) * 14;
@@ -1654,6 +2687,228 @@
     g.restore();
   }
 
+  function drawCat(cx, cy) {
+    const fur = "#e09a52", dark = "#b9713a", cream = "#f2d9b8";
+    const joy = catJoy > 0, alert = !joy && !!prowler, watching = !joy && !alert && hook.state !== "idle";
+    ctx.save();
+    if (!joy && !alert && !watching) {
+      // napping: a curled loaf, breathing slowly
+      const br = 1 + Math.sin(T * 1.4) * 0.045;
+      ctx.fillStyle = dark; ctx.lineWidth = 3; ctx.strokeStyle = dark; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.arc(cx + 1, cy - 2, 9.5, Math.PI * 0.2, Math.PI * 0.9); ctx.stroke(); // wrapped tail
+      ctx.fillStyle = fur;
+      ctx.beginPath(); ctx.ellipse(cx, cy - 4, 11 * br, 7 * br, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 8, cy - 7, 5.5, 0, Math.PI * 2); ctx.fill(); // head tucked low
+      // ears
+      ctx.beginPath(); ctx.moveTo(cx - 12, cy - 10); ctx.lineTo(cx - 11, cy - 15); ctx.lineTo(cx - 8, cy - 11.5); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx - 7, cy - 12); ctx.lineTo(cx - 5, cy - 16); ctx.lineTo(cx - 3, cy - 11.5); ctx.closePath(); ctx.fill();
+      // stripes + closed eyes
+      ctx.strokeStyle = dark; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(cx + 2, cy - 10); ctx.lineTo(cx + 3, cy - 6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + 6, cy - 9); ctx.lineTo(cx + 7, cy - 5); ctx.stroke();
+      ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(cx - 10, cy - 6.5, 1.8, 0.15, Math.PI - 0.15); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx - 6, cy - 6.5, 1.8, 0.15, Math.PI - 0.15); ctx.stroke();
+      // a drifting Z, now and then
+      const zt = (T % 4) / 4;
+      if (zt < 0.6) {
+        ctx.globalAlpha = Math.sin((zt / 0.6) * Math.PI) * 0.7;
+        ctx.fillStyle = cream; ctx.font = "800 " + (7 + zt * 5) + "px " + FONT();
+        ctx.fillText("z", cx - 14 - zt * 6, cy - 18 - zt * 10);
+        ctx.globalAlpha = 1;
+      }
+    } else {
+      // sitting up: pear body, tail signaling the mood
+      const puff = alert ? 4.2 : 2.8;
+      ctx.strokeStyle = dark; ctx.lineWidth = puff; ctx.lineCap = "round";
+      const tw = alert ? Math.sin(T * 14) * 2 : Math.sin(T * 3) * 3;
+      ctx.beginPath(); ctx.moveTo(cx + 6, cy - 3);
+      ctx.quadraticCurveTo(cx + 13, cy - 6, cx + 12 + tw * 0.3, cy - 14 - (alert ? 3 : 0)); ctx.stroke();
+      ctx.fillStyle = fur;
+      ctx.beginPath(); ctx.ellipse(cx, cy - 7, 6.5, 8.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - 1, cy - 17, 5.5, 0, Math.PI * 2); ctx.fill(); // head
+      // ears (flat-back when alert)
+      const eu = alert ? 2.5 : 5.5;
+      ctx.beginPath(); ctx.moveTo(cx - 6, cy - 20); ctx.lineTo(cx - 5.5, cy - 20 - eu); ctx.lineTo(cx - 2, cy - 21); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx + 0.5, cy - 21.5); ctx.lineTo(cx + 3, cy - 21 - eu); ctx.lineTo(cx + 4.5, cy - 19.5); ctx.closePath(); ctx.fill();
+      // chest patch + stripes
+      ctx.fillStyle = cream;
+      ctx.beginPath(); ctx.ellipse(cx - 1, cy - 5, 3, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = dark; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(cx + 3.5, cy - 12); ctx.lineTo(cx + 5, cy - 8); ctx.stroke();
+      // eyes: wide when alert, tracking the water when watching, happy arcs in joy
+      if (joy) {
+        ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(cx - 3.2, cy - 17.5, 1.7, Math.PI + 0.2, -0.2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx + 1.2, cy - 17.5, 1.7, Math.PI + 0.2, -0.2); ctx.stroke();
+        drawHeart(cx + 8, cy - 27 - (1.6 - catJoy) * 6, 4.5, Math.min(0.9, catJoy));
+      } else {
+        ctx.fillStyle = "#1c2a24";
+        const r = alert ? 2.1 : 1.5, dy2 = watching ? 1.2 : 0;
+        ctx.beginPath(); ctx.arc(cx - 3.2, cy - 17.5 + dy2, r, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 1.2, cy - 17.5 + dy2, r, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawBottle() {
+    const bx = bottle.caught ? hook.x + 11 : bottle.x;
+    const by = bottle.caught ? hook.y - 5 : bottleY();
+    const tilt = bottle.caught ? -0.9 : Math.sin(T * 1.6 + bottle.wob) * 0.22 + 0.5;
+    ctx.save();
+    ctx.translate(bx, by); ctx.rotate(tilt);
+    // glass body
+    ctx.fillStyle = "rgba(140,200,180,.55)";
+    ctx.beginPath(); ctx.ellipse(0, 0, 11, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+    // neck + cork
+    ctx.fillStyle = "rgba(140,200,180,.55)"; ctx.fillRect(9, -2.2, 5, 4.4);
+    ctx.fillStyle = "#a5773f"; ctx.fillRect(13.5, -2.6, 3.4, 5.2);
+    // the rolled page inside
+    ctx.fillStyle = "#efe3c8";
+    ctx.beginPath(); ctx.ellipse(-1, 0, 5.5, 2.6, 0.2, 0, Math.PI * 2); ctx.fill();
+    // glint
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(-6, -3.4); ctx.lineTo(2, -4.2); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFisherman(fx, sY, O) {
+    const k = O.kind || "knit";
+    if (k === "ninja") {
+      // dark gi, mask, headband tail fluttering in the breeze
+      ctx.fillStyle = "#1a1a28";
+      ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#14141e";
+      ctx.beginPath(); ctx.arc(fx, sY - 40, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#c85a4a"; // headband
+      ctx.fillRect(fx - 7, sY - 43, 14, 3.2);
+      ctx.beginPath(); ctx.moveTo(fx + 7, sY - 41.5);
+      ctx.quadraticCurveTo(fx + 18 + Math.sin(T * 3) * 3, sY - 38, fx + 24 + Math.sin(T * 3) * 2, sY - 34);
+      ctx.lineWidth = 2.8; ctx.strokeStyle = "#c85a4a"; ctx.lineCap = "round"; ctx.stroke();
+      ctx.fillStyle = "#e8e8f0"; // mask — only the eyes show
+      ctx.beginPath(); ctx.ellipse(fx, sY - 39, 5.8, 4.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a28";
+      ctx.beginPath(); ctx.ellipse(fx - 2.2, sY - 39.5, 1.4, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(fx + 2.2, sY - 39.5, 1.4, 0.9, 0, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (k === "robot") {
+      // brushed steel box torso, antenna, glowing cyan eyes
+      const pulse = 0.7 + 0.3 * Math.sin(T * 4);
+      ctx.fillStyle = "#8a949e";
+      roundRect(fx - 9, sY - 38, 18, 24, 3); ctx.fill();
+      ctx.fillStyle = "#6a747e";
+      roundRect(fx - 7.5, sY - 36, 15, 20, 2); ctx.fill();
+      ctx.fillStyle = "#a8b2bc";
+      roundRect(fx - 8, sY - 52, 16, 14, 2); ctx.fill();
+      ctx.strokeStyle = "#4a545e"; ctx.lineWidth = 1.2;
+      for (const [rx, ry] of [[-5, -30], [4, -30], [-5, -18], [4, -18]]) {
+        ctx.beginPath(); ctx.arc(fx + rx, sY + ry, 1.2, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.strokeStyle = "#5a646e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(fx, sY - 52); ctx.lineTo(fx, sY - 58); ctx.stroke();
+      ctx.fillStyle = "#ff3344";
+      ctx.beginPath(); ctx.arc(fx, sY - 59, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(80,240,255," + pulse + ")";
+      ctx.beginPath(); ctx.arc(fx - 3.5, sY - 46, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(fx + 3.5, sY - 46, 2.2, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (k === "alien") {
+      // big green head, enormous eyes, tiny antenna, purple coat anyway
+      ctx.fillStyle = "#6a4a9a";
+      ctx.beginPath(); ctx.ellipse(fx, sY - 26, 8, 11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#7ec86a";
+      ctx.beginPath(); ctx.ellipse(fx, sY - 41, 7.5, 8.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1a28";
+      ctx.beginPath(); ctx.ellipse(fx - 2.8, sY - 40, 2.8, 3.6, -0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(fx + 2.8, sY - 40, 2.8, 3.6, 0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,.75)";
+      ctx.beginPath(); ctx.arc(fx - 3.8, sY - 41.5, 0.9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(fx + 1.8, sY - 41.5, 0.9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#5aaa48"; ctx.lineWidth = 1.8; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(fx, sY - 49); ctx.lineTo(fx + Math.sin(T * 2) * 2, sY - 56); ctx.stroke();
+      ctx.fillStyle = "#9ef878";
+      ctx.beginPath(); ctx.arc(fx + Math.sin(T * 2) * 2, sY - 57, 2.2, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (k === "pirate") {
+      ctx.fillStyle = "#3a2820";
+      ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#e8b892";
+      ctx.beginPath(); ctx.arc(fx, sY - 40, 6.5, 0, Math.PI * 2); ctx.fill();
+      // tricorn
+      ctx.fillStyle = "#1a1410";
+      ctx.beginPath(); ctx.moveTo(fx - 10, sY - 42); ctx.lineTo(fx + 10, sY - 42);
+      ctx.lineTo(fx + 6, sY - 48); ctx.lineTo(fx - 6, sY - 48); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(fx - 8, sY - 42); ctx.lineTo(fx - 14, sY - 39); ctx.lineTo(fx - 8, sY - 44); ctx.fill();
+      // eye patch + smirk
+      ctx.fillStyle = "#1a1410";
+      ctx.beginPath(); ctx.ellipse(fx + 2.5, sY - 39.5, 2.8, 2.2, 0.2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#1a1410"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(fx + 2.5, sY - 39.5); ctx.lineTo(fx + 7, sY - 36); ctx.stroke();
+      ctx.beginPath(); ctx.arc(fx - 1, sY - 35, 2.5, 0.1, Math.PI * 0.55); ctx.stroke();
+      // gold earring
+      ctx.fillStyle = "#ffce4a";
+      ctx.beginPath(); ctx.arc(fx - 6.8, sY - 37, 1.3, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (k === "wizard") {
+      ctx.fillStyle = "#4a3080";
+      ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#e8b892";
+      ctx.beginPath(); ctx.arc(fx, sY - 40, 6.5, 0, Math.PI * 2); ctx.fill();
+      // tall pointed hat
+      ctx.fillStyle = "#2a1848";
+      ctx.beginPath(); ctx.moveTo(fx - 9, sY - 43); ctx.lineTo(fx + 9, sY - 43);
+      ctx.lineTo(fx, sY - 62); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#ffce4a";
+      for (const [sx, sy] of [[-3, -52], [2, -56], [-1, -48]]) {
+        ctx.beginPath(); ctx.arc(fx + sx, sY + sy, 1.2, 0, Math.PI * 2); ctx.fill();
+      }
+      // beard
+      ctx.fillStyle = "#d8d0c8";
+      ctx.beginPath(); ctx.moveTo(fx - 5, sY - 35); ctx.quadraticCurveTo(fx, sY - 28, fx + 5, sY - 35);
+      ctx.quadraticCurveTo(fx, sY - 32, fx - 5, sY - 35); ctx.fill();
+      // kind eyes
+      ctx.fillStyle = "#1a1410";
+      ctx.beginPath(); ctx.arc(fx - 2.2, sY - 39.5, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(fx + 2.2, sY - 39.5, 1.2, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (k === "astronaut") {
+      // white suit + bubble helmet
+      ctx.fillStyle = "#e8edf2";
+      ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#b8c4d0"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(fx, sY - 40, 9.5, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "rgba(180,210,240,.55)";
+      ctx.beginPath(); ctx.arc(fx, sY - 40, 8.5, 0, Math.PI * 2); ctx.fill();
+      // visor reflection
+      ctx.fillStyle = "rgba(255,255,255,.45)";
+      ctx.beginPath(); ctx.ellipse(fx - 2.5, sY - 43, 3, 2, -0.5, 0, Math.PI * 2); ctx.fill();
+      // face inside
+      ctx.fillStyle = "#e8b892";
+      ctx.beginPath(); ctx.arc(fx, sY - 39, 4.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#1a1410";
+      ctx.beginPath(); ctx.arc(fx - 1.5, sY - 39.5, 0.9, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(fx + 1.5, sY - 39.5, 0.9, 0, Math.PI * 2); ctx.fill();
+      // chest badge
+      ctx.fillStyle = "#4a6ec8";
+      ctx.beginPath(); ctx.arc(fx, sY - 22, 2.2, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    // everyday knit — sweater + beanie
+    ctx.fillStyle = O.coat;
+    ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#e8b892";
+    ctx.beginPath(); ctx.arc(fx, sY - 40, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = O.hat;
+    ctx.beginPath(); ctx.arc(fx, sY - 42, 6.8, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillRect(fx - 6.8, sY - 42, 13.6, 2.5);
+  }
+
   function drawBoat() {
     const sY = surfaceY(), bx = hook.x;
     // lantern glow (behind)
@@ -1662,9 +2917,10 @@
     lg.addColorStop(0, "rgba(255,206,120,.7)"); lg.addColorStop(1, "rgba(255,206,120,0)");
     ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, 46, 0, Math.PI * 2); ctx.fill();
 
-    // hull
+    // hull, wearing whichever paint was bought at the boathouse
+    const B = BOATS[state.boat] || BOATS[0];
     const wood = ctx.createLinearGradient(0, sY - 18, 0, sY + 6);
-    wood.addColorStop(0, "#9a6338"); wood.addColorStop(1, "#5e3a20");
+    wood.addColorStop(0, B.hull[0]); wood.addColorStop(1, B.hull[1]);
     ctx.fillStyle = wood;
     ctx.beginPath();
     ctx.moveTo(bx - 36, sY - 12);
@@ -1672,8 +2928,13 @@
     ctx.lineTo(bx + 30, sY - 18);
     ctx.lineTo(bx - 30, sY - 18);
     ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = "rgba(255,225,190,.35)"; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = B.trim; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(bx - 30, sY - 14); ctx.lineTo(bx + 30, sY - 14); ctx.stroke();
+    if (state.boat === 4) { // the barge gleams
+      const shine = ctx.createRadialGradient(bx, sY - 14, 4, bx, sY - 14, 52);
+      shine.addColorStop(0, "rgba(255,240,190,.28)"); shine.addColorStop(1, "rgba(255,240,190,0)");
+      ctx.fillStyle = shine; ctx.beginPath(); ctx.arc(bx, sY - 14, 52, 0, Math.PI * 2); ctx.fill();
+    }
 
     // lantern post + lantern
     ctx.strokeStyle = "#2e2016"; ctx.lineWidth = 2;
@@ -1681,15 +2942,13 @@
     ctx.fillStyle = "#ffd98a"; roundRect(lx - 5, ly - 6, 10, 13, 3); ctx.fill();
     ctx.strokeStyle = "#7a4a1e"; ctx.lineWidth = 1.4; ctx.stroke();
 
-    // fisherman
+    // fisherman — everyday knits or one of the legends
+    const O = OUTFITS[state.outfit] || OUTFITS[0];
     const fx = bx + 4;
-    ctx.fillStyle = "#c85a4a"; // sweater
-    ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#e8b892"; // head
-    ctx.beginPath(); ctx.arc(fx, sY - 40, 6.5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#35507e"; // beanie
-    ctx.beginPath(); ctx.arc(fx, sY - 42, 6.8, Math.PI, Math.PI * 2); ctx.fill();
-    ctx.fillRect(fx - 6.8, sY - 42, 13.6, 2.5);
+    drawFisherman(fx, sY, O);
+
+    // the boat cat: naps, watches the line, bristles at trouble, celebrates hauls
+    drawCat(bx - 17, sY - 19);
 
     // rod + line
     const tipX = bx + 34, tipY = sY - 46;
@@ -1705,10 +2964,40 @@
     ctx.beginPath(); ctx.arc(hook.x, hook.y, 6, Math.PI * 0.1, Math.PI * 1.5); ctx.stroke();
     ctx.fillStyle = "#e9f4ff";
     ctx.beginPath(); ctx.arc(hook.x - 4.5, hook.y + 4, 1.6, 0, Math.PI * 2); ctx.fill();
+
+    if (state.boatName) {
+      ctx.fillStyle = "rgba(243,236,224,.65)"; ctx.font = "600 9px " + FONT(); ctx.textAlign = "center";
+      ctx.fillText(state.boatName, bx, sY + 2);
+      ctx.textAlign = "left";
+    }
   }
 
   const bubbles = Array.from({ length: 26 }, () => ({ x: rand(0,400), y: rand(0,800), r: rand(1.5,4), v: rand(12,34), sway: rand(0,6) }));
   const TANK_HEARTS = Array.from({ length: 5 }, () => ({ fx: rand(0.15,0.85), y: rand(0,1), v: rand(0.05,0.12), s: rand(6,11), ph: rand(0,6.28) }));
+
+  // tap the glass to feed — or tap a fish for grandpa's notes
+  const feedBursts = [];
+  function tapTankFish(px, py) {
+    if (!tank.length) return false;
+    const pad = Math.min(W, H) * 0.06, tx = pad, ty = H * 0.14, th = H * 0.66;
+    let best = null, bd = 999;
+    for (const f of tank) {
+      const fy = ty + 30 + f.y * (th - 70);
+      const d = Math.hypot(px - f.x, py - fy);
+      if (d < f.s.size + 22 && d < bd) { best = f; bd = d; }
+    }
+    if (best) { openSpeciesNote(best.s); return true; }
+    return false;
+  }
+  function feedTank(px, py) {
+    if (!tank.length) return;
+    const pad = Math.min(W, H) * 0.06, tx = pad, ty = H * 0.14, tw = W - pad * 2, th = H * 0.66;
+    if (px < tx || px > tx + tw || py < ty || py > ty + th) return;
+    for (let i = 0; i < 7; i++)
+      feedBursts.push({ x: px + rand(-16, 16), y: py + rand(-10, 10), v: rand(18, 40), s: rand(5, 10), life: rand(0.8, 1.5), ph: rand(0, 6.28) });
+    for (const f of tank) { f.seekX = Math.max(tx + 30, Math.min(tx + tw - 30, px)); f.seekT = rand(1.2, 2.4); }
+    Snd.blip("pop");
+  }
 
   function drawRoom(dt) {
     const vault = state.tank === 2; // the Leviathan Vault is dark glass
@@ -1732,6 +3021,27 @@
     for (let x = tx; x <= tx + tw; x += 14) ctx.lineTo(x, ty + th - 12 - Math.sin(x * 0.3) * 4);
     ctx.lineTo(tx + tw, ty + th); ctx.closePath(); ctx.fill();
     drawTankDecor(tx, ty, tw, th);
+    drawOwnedDecor(tx, ty, tw, th);
+    // decor interactions — fish react to lantern warmth and volcano burbles
+    decorLanternCd -= dt;
+    if (state.decor.includes(3) && decorLanternCd <= 0 && tank.length) {
+      decorLanternCd = rand(7, 11);
+      const lx = tx + tw * 0.5;
+      tank[Math.floor(Math.random() * tank.length)].seekX = lx;
+      tank[Math.floor(Math.random() * tank.length)].seekT = rand(2, 3.5);
+    }
+    decorVolcanoCd -= dt;
+    if (state.decor.includes(1) && decorVolcanoCd <= 0) {
+      decorVolcanoCd = rand(7, 12);
+      const vx = tx + tw * 0.65, vbase = ty + th - 12;
+      for (const f of tank) {
+        const fy = ty + 30 + f.y * (th - 70);
+        if (Math.hypot(f.x - vx, fy - (vbase - 26)) < 90) {
+          f.vx = (f.x > vx ? 1 : -1) * Math.abs(f.vx) * 2.2;
+          f.seekT = 0;
+        }
+      }
+    }
     // plants
     ctx.strokeStyle = "#3fae5a"; ctx.lineWidth = 6; ctx.lineCap = "round";
     for (const px of [tx + tw * 0.15, tx + tw * 0.85, tx + tw * 0.5]) {
@@ -1741,11 +3051,24 @@
     }
     // swimmers
     for (const f of tank) {
-      f.wob += dt * 3; f.x += f.vx * dt;
+      f.wob += dt * 3;
+      if (f.seekT > 0) { // hurrying over to the food
+        f.seekT -= dt;
+        const d = f.seekX - f.x;
+        if (Math.abs(d) > 6) f.vx = (d > 0 ? 1 : -1) * Math.abs(f.vx);
+        f.x += f.vx * dt * 2.6;
+      } else f.x += f.vx * dt;
       const left = tx + 30, right = tx + tw - 30;
       if (f.x < left) { f.x = left; f.vx *= -1; }
       if (f.x > right) { f.x = right; f.vx *= -1; }
       drawFish(ctx, { s: f.s, x: f.x, y: ty + 30 + f.y * (th - 70), vx: f.vx, wob: f.wob }, 1);
+    }
+    // feeding hearts
+    for (let i = feedBursts.length - 1; i >= 0; i--) {
+      const b = feedBursts[i];
+      b.y -= b.v * dt; b.life -= dt;
+      if (b.life <= 0) { feedBursts.splice(i, 1); continue; }
+      drawHeart(b.x + Math.sin(T * 4 + b.ph) * 5, b.y, b.s, Math.min(0.9, b.life));
     }
     // bubbles
     for (const b of bubbles) {
@@ -1773,7 +3096,8 @@
     ctx.fillText(TANKS[state.tank].name, W / 2, ty + th + H * 0.115);
     ctx.fillStyle = "#c3b49c"; ctx.font = "600 12px " + FONT();
     ctx.fillText(kinds + " of " + SPECIES.length + " species  ·  " + total + " fish kept"
-      + (locked ? "  ·  🔒 " + locked + " need a bigger tank" : ""), W / 2, ty + th + H * 0.145);
+      + (locked ? "  ·  🔒 " + locked + " need a bigger tank" : "")
+      + (kinds ? "  ·  tap a fish to read grandpa's notes" : ""), W / 2, ty + th + H * 0.145);
     if (kinds === 0) {
       ctx.fillStyle = "rgba(243,236,224,.6)"; ctx.font = "600 14px " + FONT();
       ctx.fillText("Every new species you catch swims home to here!", W / 2, ty + th / 2);
@@ -1803,6 +3127,84 @@
     ctx.bezierCurveTo(x + s, y, x, y, x, y + s * 0.3);
     ctx.fill(); ctx.restore();
   }
+  function drawOwnedDecor(tx, ty, tw, th) {
+    const base = ty + th - 12;
+    if (state.decor.includes(0)) { // kelp cluster
+      const kx = tx + tw * 0.92;
+      ctx.strokeStyle = "#2e8a4e"; ctx.lineCap = "round";
+      for (let i = -2; i <= 2; i++) {
+        ctx.lineWidth = 5 - Math.abs(i);
+        const h = 120 - Math.abs(i) * 26;
+        ctx.beginPath(); ctx.moveTo(kx + i * 9, base + 4);
+        ctx.quadraticCurveTo(kx + i * 9 + Math.sin(T * 0.9 + i) * 12, base - h * 0.55,
+          kx + i * 9 + Math.sin(T * 0.7 + i * 2) * 9, base - h);
+        ctx.stroke();
+      }
+    }
+    if (state.decor.includes(1)) { // bubble volcano
+      const vx = tx + tw * 0.65;
+      ctx.fillStyle = "#5a4a44";
+      ctx.beginPath(); ctx.moveTo(vx - 20, base + 4); ctx.lineTo(vx - 5, base - 26);
+      ctx.lineTo(vx + 5, base - 26); ctx.lineTo(vx + 20, base + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#3c302c";
+      ctx.beginPath(); ctx.ellipse(vx, base - 26, 5, 2, 0, 0, Math.PI * 2); ctx.fill();
+      for (let i = 0; i < 4; i++) {
+        const bt = (T * (0.5 + i * 0.13) + i * 0.7) % 1;
+        ctx.globalAlpha = 1 - bt;
+        ctx.fillStyle = "rgba(255,255,255,.5)";
+        ctx.beginPath(); ctx.arc(vx + Math.sin(bt * 9 + i) * 6, base - 28 - bt * 90, 2 + bt * 2, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (state.decor.includes(2)) { // sunken rowboat
+      const rx2 = tx + tw * 0.38;
+      ctx.save(); ctx.translate(rx2, base - 4); ctx.rotate(-0.12);
+      ctx.fillStyle = "#6e4a28";
+      ctx.beginPath(); ctx.moveTo(-34, -8); ctx.quadraticCurveTo(0, 12, 34, -8);
+      ctx.lineTo(28, -14); ctx.lineTo(-28, -14); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(255,225,190,.25)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(-28, -11); ctx.lineTo(28, -11); ctx.stroke();
+      ctx.restore();
+    }
+    if (state.decor.includes(3)) { // lantern string
+      const ly = ty + 16;
+      ctx.strokeStyle = "rgba(90,66,44,.85)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(tx + 8, ly);
+      ctx.quadraticCurveTo(tx + tw / 2, ly + 26, tx + tw - 8, ly); ctx.stroke();
+      for (let i = 1; i <= 4; i++) {
+        const u = i / 5, lx2 = tx + 8 + u * (tw - 16);
+        const yy = ly + 13 * (1 - (2 * u - 1) ** 2) + Math.sin(T + i) * 1.5;
+        const gl = ctx.createRadialGradient(lx2, yy + 8, 1, lx2, yy + 8, 18);
+        gl.addColorStop(0, "rgba(255,190,110,.5)"); gl.addColorStop(1, "rgba(255,190,110,0)");
+        ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(lx2, yy + 8, 18, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffb96b"; roundRect(lx2 - 4, yy + 2, 8, 11, 3); ctx.fill();
+        ctx.strokeStyle = "#7a4a1e"; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+    }
+    if (state.decor.includes(4)) { // little lighthouse
+      const hx2 = tx + tw * 0.09;
+      ctx.fillStyle = "#d8cfc2";
+      ctx.beginPath(); ctx.moveTo(hx2 - 11, base + 4); ctx.lineTo(hx2 - 7, base - 52);
+      ctx.lineTo(hx2 + 7, base - 52); ctx.lineTo(hx2 + 11, base + 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#c05f4a";
+      for (let i = 0; i < 2; i++) {
+        const yy = base - 12 - i * 24;
+        ctx.beginPath(); ctx.moveTo(hx2 - 10 + i, yy); ctx.lineTo(hx2 + 10 - i, yy);
+        ctx.lineTo(hx2 + 10.5 - i, yy + 9); ctx.lineTo(hx2 - 10.5 + i, yy + 9); ctx.closePath(); ctx.fill();
+      }
+      ctx.fillStyle = "#3a3040"; ctx.fillRect(hx2 - 7, base - 62, 14, 10);
+      const beam = 0.5 + 0.5 * Math.sin(T * 0.8);
+      const gl2 = ctx.createRadialGradient(hx2, base - 57, 2, hx2, base - 57, 26);
+      gl2.addColorStop(0, "rgba(255,224,150," + (0.25 + beam * 0.3) + ")");
+      gl2.addColorStop(1, "rgba(255,224,150,0)");
+      ctx.fillStyle = gl2; ctx.beginPath(); ctx.arc(hx2, base - 57, 26, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "rgba(255,224,150," + (0.5 + beam * 0.4) + ")";
+      ctx.beginPath(); ctx.arc(hx2, base - 57, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#8a4a3a";
+      ctx.beginPath(); ctx.moveTo(hx2 - 8, base - 62); ctx.lineTo(hx2, base - 70);
+      ctx.lineTo(hx2 + 8, base - 62); ctx.closePath(); ctx.fill();
+    }
+  }
   function drawTankDecor(tx, ty, tw, th) {
     const base = ty + th - 12;
     // treasure chest
@@ -1826,12 +3228,26 @@
   // ---------- loop ----------
   let last = performance.now(), T = 0, bubbleAcc = 0;
   function frame(now) {
+    if (paused) return; // the loop restarts from onResume
     let dt = (now - last) / 1000; last = now;
     if (dt > 0.05) dt = 0.05;
+    if (celebrate > 0) { celebrate -= dt; if (!lowMotion()) dt *= 0.35; }
     T += dt;
     ctx.clearRect(0, 0, W, H);
 
-    if (state.view === "room") { drawRoom(dt); requestAnimationFrame(frame); return; }
+    // golden hour clock — random windows, or thermos-triggered
+    if (golden > 0) {
+      golden -= dt;
+      if (golden <= 0 && goldenCd > 500) goldenCd = rand(240, 360); // thermos pause ends
+    } else {
+      goldenCd -= dt;
+      if (goldenCd <= 0) {
+        golden = GOLDEN_LEN; goldenCd = rand(240, 360);
+        showBanner("Golden hour!", "the rare ones rise · catches pay ×" + GOLDEN_MULT);
+        Snd.blip("quest");
+      }
+    }
+    if (state.view === "room") { syncHud(); syncRoomHint(); drawRoom(dt); requestAnimationFrame(frame); return; }
 
     // camera rides the line down, then drifts home
     const camMax = Math.max(0, surfaceY() + worldDepth() + 30 - H);
@@ -1843,14 +3259,30 @@
     drawSky();
     drawWater();
 
+    if (golden > 0 && !lowMotion()) { // gold dust drifts down through the water
+      const fade = Math.min(1, golden / 6); // eases out as the hour ends
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 14; i++) {
+        const gy = surfaceY() + ((T * (14 + i % 5 * 6) + i * 173) % worldDepth());
+        const gx = ((i * 211) % W) + Math.sin(T * 0.8 + i * 1.7) * 18;
+        ctx.globalAlpha = fade * (0.25 + 0.2 * Math.sin(T * 2 + i * 2.4));
+        ctx.fillStyle = "#ffe07a";
+        ctx.beginPath(); ctx.arc(gx, gy, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
+
     bubbleAcc += dt;
-    for (const b of bubbles) {
+    const bubbleStep = perfLite() ? 2 : 1;
+    for (let bi = 0; bi < bubbles.length; bi += bubbleStep) {
+      const b = bubbles[bi];
       b.y -= b.v * dt;
       if (b.y < surfaceY()) { b.y = surfaceY() + worldDepth(); b.x = rand(0, W); }
       ctx.fillStyle = "rgba(255,255,255,.14)";
       ctx.beginPath(); ctx.arc(b.x + Math.sin(b.y * .05) * b.sway, b.y, b.r, 0, Math.PI * 2); ctx.fill();
     }
 
+    if (thermosBoostT > 0) thermosBoostT -= dt;
     ensureFish();
     const reach = maxDepthY();
     // predators: one hunter at a time — it notices (a beat you can read),
@@ -1866,6 +3298,11 @@
     for (const f of fish) {
       f.wob += dt * 3.2;
       if (f.caught) continue;
+      if (f.tease) {
+        f.teaseT -= dt;
+        f.x += f.vx * dt;
+        continue;
+      }
       if (f.flee > 0) { f.flee -= dt; f.prowl = false; f.x += f.vx * dt * 3.2; continue; }
       if (f.aggro) {
         if (!prey) { breakOff(f); f.flee = 0.4; continue; } // haul landed — it loses interest
@@ -1875,7 +3312,7 @@
           // turn toward the hook and coil — your window to move
           f.vx = (hook.x >= f.x ? 1 : -1) * Math.max(14, Math.abs(f.vx) * 0.4);
           f.x += f.vx * dt * 0.3;
-          if (f.aggro.t > 0.55) {
+          if (f.aggro.t > 0.55 / perk().noticeScale) {
             const dx = hook.x - f.x, dy = hook.y - f.y, d = Math.hypot(dx, dy) || 1;
             const sp = 240 + (f.s.big || 1) * 35;
             f.aggro = { phase: "lunge", t: 0, vx: dx / d * sp, vy: dy / d * sp };
@@ -1891,6 +3328,7 @@
               floatText(hook.x, hook.y - 24, f.s.name + " stole your " + stolen.s.name + "!", "#ff6a6a");
               Snd.blip("bite");
               stolenThisCast = true;
+              bumpStat("stolen");
               Quests.event("stolen");
               syncHud();
             }
@@ -1909,6 +3347,15 @@
           f.dart = 0.5; f.dvx = (sdx >= 0 ? 1 : -1) * 135; f.dvy = (sdy >= 0 ? 1 : -1) * 60;
         }
       }
+      // curious fish drift toward a moving hook — the shy ones bolt, these come peek
+      if (f.s.curious && hook.state !== "idle" && !(f.dart > 0)) {
+        const cdx = hook.x - f.x, cdy = hook.y - f.y, cd2 = cdx * cdx + cdy * cdy;
+        if (cd2 > 900 && cd2 < 14400) {
+          const b = perk().curiousBoost;
+          f.vx += Math.sign(cdx) * dt * 22 * b;
+          f.y += Math.sign(cdy) * dt * 6 * b;
+        }
+      }
       f.x += f.vx * dt; f.y += Math.sin(f.wob) * 0.25;
       // acquisition: nearest calm predator inside a real hunting radius
       if (prey && !prowler && f.s.pred && stealCd <= 0) {
@@ -1916,8 +3363,8 @@
         if (dx * dx + dy * dy < 280 * 280) { prowler = f; f.aggro = { phase: "notice", t: 0 }; }
       }
     }
-    for (const f of fish) if (!f.caught) f.y = Math.max(surfaceY() + 10, Math.min(surfaceY() + worldDepth() - 8, f.y));
-    fish = fish.filter(f => f.x > -60 && f.x < W + 60);
+    for (const f of fish) if (!f.caught && !f.tease) f.y = Math.max(surfaceY() + 10, Math.min(surfaceY() + worldDepth() - 8, f.y));
+    fish = fish.filter(f => f.tease ? f.teaseT > 0 && f.x < W + 90 : f.x > -60 && f.x < W + 60);
     if (prowler && !fish.includes(prowler)) prowler = null;
 
     hook.x += (hook.tx - hook.x) * Math.min(1, dt * 10);
@@ -1931,10 +3378,42 @@
       if (hook.y <= surfaceY()) { hook.y = surfaceY(); resolveCatch(); }
     } else { hook.y = surfaceY(); }
 
-    for (const f of fish) { if (f.caught) continue; drawFish(ctx, f, f.y > reach + 4 ? 0.32 : 1); }
+    // bottles drift the surface; park the boat over one and cast to snag it
+    if (catJoy > 0) catJoy -= dt;
+    if (!bottle) {
+      bottleCd -= dt;
+      if (bottleCd <= 0) spawnBottle();
+    } else if (!bottle.caught) {
+      bottle.x += bottle.vx * dt;
+      if (bottle.x < -40 || bottle.x > W + 40) { bottle = null; bottleCd = rand(60, 120); }
+      else if (hook.state !== "idle") {
+        const bdx = bottle.x - hook.x, bdy = bottleY() - hook.y;
+        if (bdx * bdx + bdy * bdy < 26 * 26) {
+          bottle.caught = true;
+          floatText(bottle.x, bottleY() - 16, "a message in a bottle…", "#bfe8d9");
+          Snd.blip("pop");
+        }
+      }
+    }
+
+    const reachGlow = perk().reachGlow;
+    for (const f of fish) {
+      if (f.caught) continue;
+      drawFish(ctx, f, f.tease ? 0.45 : (f.y > reach + 4 ? reachGlow : 1));
+    }
     for (const f of hook.caught) { f.x = hook.x + f.ox; f.y = hook.y + f.oy; drawFish(ctx, f, 1); }
 
+    if (bottle) drawBottle();
     drawBoat();
+
+    // chase fish tease — one legend per water, barely seen
+    const chaseId = CHASE_BY_POND[state.pond];
+    if (chaseId && !state.collection[chaseId] && hook.state === "idle") {
+      ctx.save();
+      ctx.fillStyle = "rgba(243,236,224,.55)"; ctx.font = "600 10px " + FONT(); ctx.textAlign = "center";
+      ctx.fillText("Something legendary swims here…", W / 2, surfaceY() + 54);
+      ctx.textAlign = "left"; ctx.restore();
+    }
 
     for (let i = floats.length - 1; i >= 0; i--) {
       const t = floats[i]; t.y -= dt * 34; t.life -= dt * 0.9;
@@ -1945,6 +3424,8 @@
     }
 
     ctx.restore(); // camera
+    syncPredWarn();
+    syncHud();
 
     requestAnimationFrame(frame);
   }
@@ -1960,11 +3441,78 @@
   el("quest").addEventListener("click", openNote);
   el("note-close").addEventListener("click", () => el("note-overlay").classList.remove("open"));
   el("note-overlay").addEventListener("click", (e) => { if (e.target === el("note-overlay")) el("note-overlay").classList.remove("open"); });
+  el("postcard-close").addEventListener("click", () => el("postcard-overlay").classList.remove("open"));
+  el("postcard-overlay").addEventListener("click", (e) => { if (e.target === el("postcard-overlay")) el("postcard-overlay").classList.remove("open"); });
+  el("btn-dex").addEventListener("click", openDex);
+  el("dex-close").addEventListener("click", () => el("dex-overlay").classList.remove("open"));
+  el("dex-overlay").addEventListener("click", (e) => { if (e.target === el("dex-overlay")) el("dex-overlay").classList.remove("open"); });
+  el("credits-close").addEventListener("click", () => el("credits-overlay").classList.remove("open"));
+  el("credits-overlay").addEventListener("click", (e) => { if (e.target === el("credits-overlay")) el("credits-overlay").classList.remove("open"); });
+  el("dedication-save").addEventListener("click", saveDedication);
+  el("dedication-overlay").addEventListener("click", (e) => { if (e.target === el("dedication-overlay")) el("dedication-overlay").classList.remove("open"); });
 
-  window.__dc = { SPECIES, drawFish, state }; // debug handle for tests
-  if (state._rescanQuests) { delete state._rescanQuests; Quests.rescan(); save(); }
-  syncHud(); syncBrand(); setView("fish"); Quests.check();
-  if (state.qi === 0) setTimeout(openNote, 900); // the journal falls open on a brand-new game
-  requestAnimationFrame(frame);
+  if (!YT) {
+    window.__dc = {
+      SPECIES, drawFish, state, spawnBottle,
+      get bottle() { return bottle; },
+      get hook() { return hook; },
+      stats: () => ({ ...state.analytics, sinks: { ...state.sinks }, score: scoreValue() }),
+      rich: (n) => { state.gold += n || 1e12; syncHud(); save(); return state.gold; },
+      wear: (n) => { if (n >= 0 && n < OUTFITS.length) { if (!state.outfitsOwned.includes(n)) state.outfitsOwned.push(n); state.outfit = n; save(); syncHud(); } return OUTFITS[state.outfit].name; },
+      pond: (n) => { if (n >= 0 && n < PONDS.length) { if (!state.pondsOwned.includes(n)) state.pondsOwned.push(n); state.pond = n; fish = []; Snd.setMood(n); save(); syncBrand(); } return PONDS[state.pond].name; },
+    };
+  }
+
+  // ---------- Playables pause/resume: freeze the loop, the sounds, the input ----------
+  if (YT) {
+    YT.system.onPause(() => {
+      if (paused) return;
+      paused = true;
+      save(); // progress is safe before YouTube takes the screen
+      Snd.applyAudio();
+      clearTimeout(Snd.plinkTimer);
+    });
+    YT.system.onResume(() => {
+      if (!paused) return;
+      paused = false;
+      Snd.applyAudio();
+      Snd.schedulePlink();
+      last = performance.now();
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // ---------- boot: splash frame -> load the save -> play ----------
+  function drawSplash() {
+    ctx.fillStyle = "#1a1226"; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffd9a0"; ctx.font = "800 22px " + FONT();
+    ctx.fillText("Deep Catch", W / 2, H * 0.46);
+    ctx.fillStyle = "#c3b49c"; ctx.font = "600 12px " + FONT();
+    ctx.fillText("casting off…", W / 2, H * 0.46 + 26);
+    ctx.textAlign = "left";
+  }
+  (async () => {
+    drawSplash();
+    if (YT) YT.game.firstFrameReady();
+    await load();
+    bumpStat("boots");
+    refreshThermos();
+    if (state.gold > 0 || state.lineUp > 0) state.tut.gold = true;
+    if (speciesCount() > 0) { state.tut.cast = true; state.tut.species = true; }
+    if (!YT) { state.gold = Math.max(state.gold, 500000000); save(); } // local testing purse — never runs inside YouTube
+    if (state._rescanQuests) { delete state._rescanQuests; Quests.rescan(); save(); }
+    fish = []; ensureFish(); rebuildTank(); // the loaded water gets its own school
+    muteBtn.textContent = state.muted ? "🔇" : "🔊";
+    syncHud(); syncBrand(); setView("fish"); Quests.check(); syncDexPill();
+    sendScore(); // baseline: best score must match the save
+    if (YT) YT.game.gameReady();
+    if (journalDone() && !state.journalFinaleSeen && !state.boatName)
+      setTimeout(openDedication, 1400);
+    else if (dexComplete() && !state.endgameSeen) { state.endgameSeen = true; save(); showEndgame(true); }
+    else if (state.qi === 0) setTimeout(openNote, 900); // the journal falls open on a brand-new game
+    else setTimeout(bootNudge, 2400);
+    requestAnimationFrame(frame);
+  })();
 })();
 </script>

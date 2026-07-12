@@ -53,7 +53,7 @@ Complete in the **YouTube embed preview** after deploy — see [PLAYABLES-QA.md]
 | Item | Status |
 |------|--------|
 | GitHub Pages workflow | ✅ `.github/workflows/pages.yml` |
-| HTTPS game URL | ✅ `https://kosweet.github.io/deep-catch/` |
+| HTTPS game URL | ⏳ Repo is **private** — enable public Pages or use Netlify (see DEPLOY.md) |
 | Icon 512+ | ✅ `assets/icon.png` |
 | Preview image | ✅ `assets/preview.png` |
 | Gameplay video 10–15s | ☐ Record from live URL (see SUBMIT.md) |

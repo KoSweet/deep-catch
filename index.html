@@ -1,0 +1,1970 @@
+<title>Deep Catch</title>
+<style>
+  :root {
+    --gold: #ffce4a;
+    --gold-deep: #f0a500;
+    --ink: #f3ece0;
+    --ink-dim: #c3b49c;
+    --panel: rgba(38, 26, 40, 0.9);
+    --panel-edge: rgba(255, 214, 158, 0.22);
+    --surface: #ffd9a0;
+    --font: "Trebuchet MS", "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: #1a1226;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app { position: fixed; inset: 0; display: flex; flex-direction: column; }
+
+  /* ---------- top HUD ---------- */
+  .hud-top {
+    position: relative;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: linear-gradient(rgba(40, 26, 44, 0.65), rgba(40, 26, 44, 0));
+  }
+  .tabs {
+    display: flex;
+    background: rgba(20, 12, 26, 0.5);
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    padding: 3px; gap: 2px;
+  }
+  .tab {
+    font-family: var(--font); font-weight: 700; font-size: 13px;
+    letter-spacing: 0.03em; color: var(--ink-dim);
+    background: transparent; border: 0; border-radius: 999px;
+    padding: 7px 15px; cursor: pointer;
+    transition: color .18s, background .18s;
+  }
+  .tab[aria-selected="true"] { color: #3a2410; background: var(--gold); }
+
+  .brand { flex: 1; text-align: center; line-height: 1.05; min-width: 0; overflow: hidden; }
+  .brand b {
+    font-size: clamp(13px, 4.2vw, 17px); letter-spacing: .06em; color: var(--surface); white-space: nowrap;
+    text-shadow: 0 1px 6px rgba(0,0,0,.4);
+  }
+  .brand span {
+    display: block; font-size: 9px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--ink-dim); margin-top: 1px;
+  }
+  @media (max-width: 460px) { .brand span { display: none; } }
+
+  .gold-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(20, 12, 26, 0.5);
+    border: 1px solid rgba(255, 206, 74, .35);
+    border-radius: 999px; padding: 7px 14px 7px 8px; flex: 0 0 auto;
+  }
+  .coin {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffe9a0, var(--gold) 55%, var(--gold-deep));
+    box-shadow: inset 0 0 0 2px rgba(240,165,0,.5);
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 800; color: #7a4b00;
+  }
+  .gold-pill b { font-size: 17px; font-variant-numeric: tabular-nums; }
+
+  /* ---------- stage ---------- */
+  .stage { position: relative; flex: 1; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  /* ---------- bottom bar ---------- */
+  .hud-bottom {
+    position: relative; z-index: 20;
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(rgba(26,18,38,0), #1a1226 60%);
+  }
+  .reach { flex: 0 0 auto; font-size: 11px; color: var(--ink-dim); letter-spacing: .04em; line-height: 1.5; }
+  .reach b { color: var(--surface); font-size: 13px; }
+  .catch-dots { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; align-content: center; }
+  .dot {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid rgba(255,217,160,.4); background: transparent;
+    transition: background .15s, border-color .15s, transform .15s;
+  }
+  .dot.on { background: var(--gold); border-color: var(--gold); transform: scale(1.12); }
+
+  .btn {
+    font-family: var(--font); font-weight: 800; letter-spacing: .04em;
+    border: 0; border-radius: 14px; cursor: pointer;
+    transition: transform .08s ease, filter .15s; flex: 0 0 auto;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn-cast {
+    font-size: 16px; color: #3a2410; padding: 14px 30px;
+    background: linear-gradient(#ffe07a, var(--gold) 60%, var(--gold-deep));
+    box-shadow: 0 4px 0 #b9791b, 0 8px 18px rgba(0,0,0,.35);
+  }
+  .btn-cast:active { box-shadow: 0 1px 0 #b9791b; transform: translateY(3px) scale(.98); }
+  .btn-cast.reeling {
+    background: linear-gradient(#ffc59f, #e8895a 60%, #c05f34);
+    box-shadow: 0 4px 0 #8a4020, 0 8px 18px rgba(0,0,0,.35); color: #3a1c0c;
+  }
+  .btn-shop { font-size: 14px; color: var(--ink); padding: 12px 18px;
+    background: rgba(46, 30, 50, 0.85); border: 1px solid var(--panel-edge); }
+
+  /* ---------- shop overlay ---------- */
+  .overlay {
+    position: absolute; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(14, 8, 20, .55); backdrop-filter: blur(3px); padding: 18px;
+  }
+  .overlay.open { display: flex; }
+  .shop {
+    width: 100%; max-width: 380px; background: var(--panel);
+    border: 1px solid var(--panel-edge); border-radius: 22px; padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    max-height: 86%; overflow-y: auto; overscroll-behavior: contain;
+  }
+  .shop h2 { font-size: 20px; letter-spacing: .02em; margin-bottom: 2px; }
+  .shop .sub { font-size: 12px; color: var(--ink-dim); margin-bottom: 16px; }
+  .up {
+    display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px;
+    background: rgba(20, 12, 26, .5); border: 1px solid rgba(255,217,160,.12); margin-bottom: 10px;
+  }
+  .up .ic { font-size: 24px; width: 34px; text-align: center; flex: 0 0 auto; }
+  .up .body { flex: 1; min-width: 0; }
+  .up .body b { font-size: 14px; }
+  .up .body p { font-size: 11px; color: var(--ink-dim); margin-top: 2px; }
+  .up .buy {
+    font-family: var(--font); font-weight: 800; font-size: 13px;
+    color: #3a2410; background: var(--gold); border: 0; border-radius: 10px;
+    padding: 9px 12px; cursor: pointer; flex: 0 0 auto;
+    display: flex; align-items: center; gap: 5px;
+    transition: transform .08s, filter .15s;
+  }
+  .up .buy:active { transform: scale(.95); }
+  .up .buy:disabled { background: rgba(255,217,160,.16); color: var(--ink-dim); cursor: not-allowed; }
+  .up .buy .c { font-size: 11px; }
+  .shop .close {
+    width: 100%; margin-top: 6px; font-family: var(--font); font-weight: 700; font-size: 14px;
+    color: var(--ink-dim); background: transparent;
+    border: 1px solid var(--panel-edge); border-radius: 12px; padding: 11px; cursor: pointer;
+  }
+
+  .banner {
+    position: absolute; top: 16%; left: 50%; z-index: 30;
+    transform: translate(-50%, -8px);
+    background: linear-gradient(#ffe07a, var(--gold-deep));
+    color: #5a3600; font-weight: 800; letter-spacing: .04em;
+    padding: 12px 26px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.4);
+    opacity: 0; pointer-events: none; text-align: center;
+  }
+  .banner.show { animation: pop 2s cubic-bezier(.22,.61,.36,1) forwards; }
+  .banner b { display: block; font-size: 20px; }
+  .banner span { font-size: 11px; text-transform: uppercase; letter-spacing: .14em; }
+  @keyframes pop {
+    0% { opacity: 0; transform: translate(-50%, 6px) scale(.9); }
+    15% { opacity: 1; transform: translate(-50%, -10px) scale(1.04); }
+    82% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -26px) scale(1); }
+  }
+
+  .hint {
+    position: absolute; left: 50%; top: 46%; z-index: 15; transform: translateX(-50%);
+    color: rgba(243,236,224,.8); font-size: 13px; letter-spacing: .03em;
+    text-align: center; pointer-events: none; text-shadow: 0 2px 8px rgba(0,0,0,.5);
+    transition: opacity .4s;
+  }
+
+  @media (prefers-reduced-motion: reduce) { .banner.show { animation-duration: 1.2s; } }
+</style>
+
+<div id="app">
+  <div class="hud-top">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-fish" aria-selected="true">Fishing</button>
+      <button class="tab" role="tab" id="tab-room" aria-selected="false">Room</button>
+    </div>
+    <div class="brand"><b>Deep&nbsp;Catch</b><span>a cozy little fishing trip</span></div>
+    <div class="gold-pill"><span class="coin">$</span><b id="gold">0</b></div>
+    <button id="mute" aria-label="Toggle sound" style="border:0;cursor:pointer;background:rgba(20,12,26,.5);border:1px solid var(--panel-edge);border-radius:999px;width:36px;height:36px;font-size:15px;flex:0 0 auto">🔊</button>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hint" id="hint">Move to aim &middot; tap the water or press Cast to drop your hook</div>
+    <button id="quest" aria-label="Open grandpa's journal" style="position:absolute;top:8px;left:10px;z-index:16;max-width:72%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font);font-weight:700;font-size:12px;color:var(--ink);background:rgba(20,12,26,.55);border:1px solid var(--panel-edge);border-radius:999px;padding:8px 13px;cursor:pointer;text-align:left"></button>
+    <div class="overlay" id="note-overlay">
+      <div class="shop" style="max-width:340px">
+        <h2>📜 Grandpa's Journal</h2>
+        <p class="sub" id="note-story" style="font-size:13.5px;line-height:1.55;color:var(--ink);margin:10px 0 14px;font-style:italic"></p>
+        <div class="up"><div class="ic">🎯</div><div class="body"><b id="note-goal"></b><p>reward: <span id="note-reward" style="color:var(--gold);font-weight:800"></span></p></div></div>
+        <button class="close" id="note-close">Back to the water</button>
+      </div>
+    </div>
+    <div class="banner" id="banner"><b>New species!</b><span>added to your aquarium</span></div>
+    <div class="overlay" id="overlay">
+      <div class="shop">
+        <h2>Tackle Shop</h2>
+        <p class="sub">Sell your catch, spend the gold — every upgrade comes from the water.</p>
+        <div id="shop-list"></div>
+        <button class="close" id="shop-close">Back to the water</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hud-bottom" id="bottom-fish">
+    <div class="reach">Line reach<br><b id="reach-pct">16%</b></div>
+    <div class="catch-dots" id="dots"></div>
+    <button class="btn btn-shop" id="btn-shop">Shop</button>
+    <button class="btn btn-cast" id="btn-cast">Cast</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+  const stage = document.getElementById("stage");
+  let W = 0, H = 0, DPR = 1;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const FONT = () => getComputedStyle(document.body).fontFamily;
+
+  // ---------- persistent state (single currency: gold) ----------
+  const SAVE_KEY = "deepcatch.v3";
+  const state = {
+    view: "fish",
+    gold: 0,
+    lineUp: 0, netUp: 0, reelUp: 0, hookUp: 0,
+    collection: {},   // speciesId -> count caught
+    pond: 0, pondsOwned: [0], tank: 0, muted: false,
+  };
+  function load() {
+    try {
+      // v2/v1 saves carry over: gold, gear levels, collection
+      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem("deepcatch.v2") || localStorage.getItem("deepcatch.v1");
+      if (raw) {
+        const s = JSON.parse(raw);
+        state.gold = s.gold || 0;
+        state.lineUp = s.lineUp || 0;
+        state.netUp = s.netUp || 0;
+        state.reelUp = s.reelUp || 0;
+        state.hookUp = s.hookUp || 0;
+        state.collection = s.collection || {};
+        state.pondsOwned = Array.isArray(s.pondsOwned) && s.pondsOwned.includes(0) ? s.pondsOwned : [0];
+        state.pond = state.pondsOwned.includes(s.pond) ? s.pond : 0;
+        state.tank = Math.min(2, s.tank || 0);
+        state.muted = !!s.muted;
+        state.qi = s.qi || 0;
+        if (s.wv !== 2) { // older builds had 4 waters — remap to the 7-water ladder
+          const map = { 0: 0, 1: 1, 2: 3, 3: 5 };
+          state.pondsOwned = state.pondsOwned.map(i => map[i] !== undefined ? map[i] : 0);
+          if (!state.pondsOwned.includes(0)) state.pondsOwned.push(0);
+          state.pond = map[s.pond] !== undefined ? map[s.pond] : 0;
+          if (!state.pondsOwned.includes(state.pond)) state.pond = 0;
+          state._rescanQuests = true;
+        }
+      }
+    } catch (e) {}
+  }
+  function save() {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({
+      gold: state.gold, lineUp: state.lineUp, netUp: state.netUp,
+      reelUp: state.reelUp, hookUp: state.hookUp, collection: state.collection,
+      pond: state.pond, pondsOwned: state.pondsOwned, tank: state.tank, muted: state.muted, qi: state.qi, wv: 2,
+    })); } catch (e) {}
+  }
+  load();
+
+  // ---------- species (shallow -> deep, themed per water) ----------
+  const SPECIES = [
+    // Backyard Pond — the originals
+    { id:"anchovy",  name:"Anchovy",    pond:0, color:"#c3d2df", size:15, minD:0.00, maxD:0.22, gold:3,  rare:1.0, pattern:"lateral" },
+    { id:"clown",    name:"Clownfish",  pond:0, color:"#ff8a3d", size:17, minD:0.05, maxD:0.32, gold:7,  rare:0.9, pattern:"clown" },
+    { id:"mackerel", name:"Mackerel",   pond:0, color:"#5fc6b0", size:20, minD:0.16, maxD:0.44, gold:13, rare:0.85, pattern:"tiger", shy:true },
+    { id:"bass",     name:"Bass",       pond:0, color:"#88b85c", size:24, minD:0.26, maxD:0.56, gold:22, rare:0.7, pattern:"stripe" },
+    { id:"puffer",   name:"Pufferfish", pond:0, color:"#f2d04b", size:24, minD:0.36, maxD:0.64, gold:38, rare:0.55, body:"puffer" },
+    { id:"squid",    name:"Squid",      pond:0, color:"#c07fd6", size:23, minD:0.48, maxD:0.78, gold:60, rare:0.5, body:"squid" },
+    { id:"lantern",  name:"Lanternfish",pond:0, color:"#57e0d6", size:19, minD:0.6,  maxD:0.9,  gold:95, rare:0.4, glow:"#9ffff3", pattern:"photo" },
+    { id:"angler",   name:"Anglerfish", pond:0, color:"#43607a", size:28, minD:0.72, maxD:0.98, gold:150,rare:0.3, glow:"#ffd66b", pred:true, body:"angler" },
+    { id:"koi",      name:"Golden Koi", pond:0, color:"#ffcf4d", size:26, minD:0.3,  maxD:0.92, gold:240,rare:0.05,glow:"#fff0b0", body:"koi" },
+    // Goldfish Garden — ornamental gold
+    { id:"ranchu",   name:"Golden Ranchu",     pond:1, color:"#f6a93b", size:18, minD:0.00, maxD:0.28, gold:22,  rare:1.0, body:"goldfish", gf:"ranchu" },
+    { id:"fantail",  name:"Fantail",           pond:1, color:"#ff9a4d", size:17, minD:0.12, maxD:0.45, gold:48,  rare:0.8, body:"goldfish", gf:"fantail" },
+    { id:"bubbleye", name:"Bubble-Eye",        pond:1, color:"#ffc46a", size:16, minD:0.3,  maxD:0.6,  gold:110, rare:0.55, body:"goldfish", gf:"bubbleye" },
+    { id:"bkoi",     name:"Butterfly Koi",     pond:1, color:"#f5efe4", size:24, minD:0.4,  maxD:0.75, gold:230, rare:0.4, body:"koi", flow:true },
+    { id:"celest",   name:"Celestial Goldfish",pond:1, color:"#ffd98e", size:20, minD:0.6,  maxD:0.97, gold:620, rare:0.2, glow:"#ffe9b0", body:"goldfish", gf:"celest", shy:true },
+    { id:"pearl",    name:"Pearlscale",        pond:1, color:"#f2dcc6", size:17, minD:0.2,  maxD:0.5,  gold:75,  rare:0.6, body:"goldfish", gf:"fantail" },
+    { id:"moor",     name:"Black Moor",        pond:1, color:"#33303a", size:18, minD:0.35, maxD:0.7,  gold:160, rare:0.45, body:"goldfish", gf:"bubbleye" },
+    // Kelp Forest — the woods that sway
+    { id:"kperch",   name:"Kelp Perch",        pond:2, color:"#7da65a", size:18, minD:0.00, maxD:0.3,  gold:45,   rare:1.0, pattern:"stripe" },
+    { id:"garib",    name:"Garibaldi",         pond:2, color:"#ff7f2a", size:19, minD:0.1,  maxD:0.4,  gold:90,   rare:0.8, shy:true },
+    { id:"rockf",    name:"Rockfish",          pond:2, color:"#8a6e54", size:22, minD:0.3,  maxD:0.6,  gold:170,  rare:0.6, pattern:"dots" },
+    { id:"gkelp",    name:"Giant Kelpfish",    pond:2, color:"#5e8a3e", size:26, minD:0.45, maxD:0.75, gold:300,  rare:0.45, pattern:"tiger" },
+    { id:"dragon",   name:"Leafy Seadragon",   pond:2, color:"#9ec46a", size:24, minD:0.6,  maxD:0.9,  gold:650,  rare:0.28, glow:"#d6f0a0", body:"eel", leafy:true },
+    { id:"moray",    name:"Moray Eel",         pond:2, color:"#6e7a3e", size:30, minD:0.7,  maxD:0.98, gold:1100, rare:0.18, big:2, pred:true, body:"eel" },
+    // Open Sea — big fins, moonlit
+    { id:"sardine",  name:"Sardine",       pond:3, color:"#b8c9d8", size:14, minD:0.00, maxD:0.3,  gold:80,   rare:1.0, pattern:"dots", shy:true },
+    { id:"tuna",     name:"Bluefin Tuna",  pond:3, color:"#4e6e96", size:26, minD:0.15, maxD:0.5,  gold:190,  rare:0.7, body:"tuna" },
+    { id:"ray",      name:"Moonlit Ray",   pond:3, color:"#8fa6c4", size:30, minD:0.3,  maxD:0.6,  gold:420,  rare:0.45, glow:"#cfe0ff", big:2, body:"ray" },
+    { id:"reef",     name:"Reef Shark",    pond:3, color:"#7e93a3", size:34, minD:0.4,  maxD:0.75, gold:800,  rare:0.32, big:2, body:"shark", pred:true },
+    { id:"hammer",   name:"Hammerhead",    pond:3, color:"#6e8291", size:38, minD:0.6,  maxD:0.9,  gold:1400, rare:0.2,  big:2, body:"shark", hammer:true, pred:true },
+    { id:"vamp",     name:"Vampire Squid", pond:3, color:"#5a2a5e", size:22, minD:0.75, maxD:0.98, gold:2200, rare:0.12, glow:"#c86fd0", body:"squid" },
+    { id:"sword",    name:"Swordfish",     pond:3, color:"#5a7a9e", size:34, minD:0.5,  maxD:0.8,  gold:950,  rare:0.28, big:2, body:"tuna", bill:true, shy:true },
+    // Frozen Fjord — under the dancing sky
+    { id:"char",     name:"Arctic Char",     pond:4, color:"#b87a8e", size:20, minD:0.00, maxD:0.3,  gold:180,  rare:1.0, pattern:"dots" },
+    { id:"icef",     name:"Icefish",         pond:4, color:"#cfe6f0", size:18, minD:0.2,  maxD:0.5,  gold:380,  rare:0.7, glow:"#e8f6ff", shy:true },
+    { id:"narwhal",  name:"Narwhal",         pond:4, color:"#c9d2dc", size:34, minD:0.35, maxD:0.65, gold:900,  rare:0.42, big:2, body:"whale", tusk:true },
+    { id:"beluga",   name:"Beluga",          pond:4, color:"#e8edf2", size:36, minD:0.5,  maxD:0.8,  gold:1600, rare:0.3,  big:2, body:"whale" },
+    { id:"fjelly",   name:"Frost Jelly",     pond:4, color:"#bfe0f5", size:22, minD:0.65, maxD:0.95, gold:2600, rare:0.2,  glow:"#dff2ff", body:"jelly" },
+    { id:"gshark",   name:"Greenland Shark", pond:4, color:"#5e6a72", size:42, minD:0.75, maxD:0.99, gold:4200, rare:0.12, big:3, danger:true, pred:true, body:"shark" },
+    // The Trench — ancient and hungry
+    { id:"coel",     name:"Coelacanth",    pond:5, color:"#3b5b9a", size:32, minD:0.15, maxD:0.5,  gold:900,  rare:0.7,  big:2, danger:true, body:"coel" },
+    { id:"whaley",   name:"Void Whaley",   pond:5, color:"#251a4e", size:40, minD:0.4,  maxD:0.7,  gold:2600, rare:0.4,  glow:"#8a6fff", big:3, danger:true, body:"whale" },
+    { id:"dunk",     name:"Dunkleosteus",  pond:5, color:"#4a4e58", size:44, minD:0.6,  maxD:0.88, gold:5200, rare:0.22, big:3, danger:true, body:"dunk", pred:true },
+    { id:"levi",     name:"The Leviathan", pond:5, color:"#101826", size:52, minD:0.78, maxD:0.99, gold:9500, rare:0.1,  glow:"#6fd6ff", big:3, danger:true, body:"serpent", pred:true },
+    // The Hadal Garden — dark, and warm, and kind
+    { id:"snail",    name:"Cinder Snailfish", pond:6, color:"#d9a0a8", size:20, minD:0.00, maxD:0.35, gold:800,   rare:1.0, glow:"#ffc9b0" },
+    { id:"emberj",   name:"Ember Jelly",      pond:6, color:"#ff9a5e", size:24, minD:0.2,  maxD:0.55, gold:2000,  rare:0.6, glow:"#ffb96b", body:"jelly" },
+    { id:"mothray",  name:"Moth Ray",         pond:6, color:"#c9a88e", size:32, minD:0.4,  maxD:0.7,  gold:4500,  rare:0.4, big:2, glow:"#ffd9a0", body:"ray" },
+    { id:"ghost",    name:"Ghost Eel",        pond:6, color:"#d8d2e6", size:30, minD:0.55, maxD:0.85, gold:8000,  rare:0.26, big:2, glow:"#efeaff", body:"eel", pred:true },
+    { id:"hearth",   name:"Hearthfish",       pond:6, color:"#ff8a4d", size:26, minD:0.7,  maxD:0.95, gold:12000, rare:0.16, glow:"#ffb060", shy:true },
+    { id:"oldlantern", name:"The Old Lantern", pond:6, color:"#3a2c26", size:50, minD:0.85, maxD:0.99, gold:20000, rare:0.08, big:3, danger:true, pred:true, glow:"#ffb96b", body:"angler" },
+  ];
+  const byId = Object.fromEntries(SPECIES.map(s => [s.id, s]));
+
+  // ---------- waters & tanks (bought with gold, like everything) ----------
+  const PONDS = [
+    { name:"Backyard Pond",   sub:"a cozy little fishing trip", price:0,
+      sky:["#241a3e","#5b4a7a","#c9795f","#f4b06a"], cloud:"rgba(60,44,74,.55)",
+      water:["#7fb8d6","#3ba0cc","#1c6f9c","#08476a","#031c2c"], sun:"#ffe6b0", sunGlow:"rgba(255,214,150,.55)",
+      shine:"255,190,120" },
+    { name:"Goldfish Garden", sub:"ornamental beauties, richly prized", price:20000,
+      sky:["#3a1e3e","#7a3a5e","#d67a6a","#ffb87a"], cloud:"rgba(90,50,74,.5)",
+      water:["#d09aa8","#8a7a9e","#4c5a80","#243a5c","#0c1c34"], sun:"#ffe0b8", sunGlow:"rgba(255,200,160,.55)",
+      shine:"255,200,160" },
+    { name:"Kelp Forest",     sub:"the woods that sway", price:200000,
+      sky:["#1e2a2e","#3a5e46","#a8b05e","#e8d27a"], cloud:"rgba(50,70,55,.5)",
+      water:["#4e8e6e","#2e6e56","#1a4a40","#0c2c28","#041410"], sun:"#ffedb0", sunGlow:"rgba(255,235,170,.5)",
+      shine:"230,220,140" },
+    { name:"Open Sea",        sub:"big water, big fins", price:1400000,
+      sky:["#101a36","#26365e","#3e5680","#5e7a9e"], cloud:"rgba(40,52,84,.55)",
+      water:["#3e6e96","#2a5680","#183c62","#0a2440","#03101f"], sun:"#f0ead8", sunGlow:"rgba(220,230,255,.45)",
+      shine:"210,225,255" },
+    { name:"Frozen Fjord",    sub:"where the sky dances green", price:16000000,
+      sky:["#0a1226","#16264a","#2a4668","#7a9ab8"], cloud:"rgba(60,80,110,.35)",
+      water:["#7ac2d8","#3e8cb0","#1e5a86","#0c3258","#041a30"], sun:"#eef4ff", sunGlow:"rgba(200,230,255,.5)",
+      shine:"190,220,255", aurora:true },
+    { name:"The Trench",      sub:"lightless · ancient · hungry", price:160000000,
+      sky:["#0d0a1a","#171226","#1e1c32","#2a2440"], cloud:"rgba(20,16,34,.6)",
+      water:["#1e2c4a","#12203a","#081426","#030a16","#010208"], sun:"#8a8ea8", sunGlow:"rgba(140,150,190,.25)",
+      shine:"140,150,190", sunK:0.7, shadow:"cold" },
+    { name:"The Hadal Garden", sub:"the cold ends · the lights are kind", price:560000000,
+      sky:["#050308","#0a0710","#120a14","#241016"], cloud:"rgba(30,20,26,.5)",
+      water:["#160f1e","#100a18","#0a0612","#050309","#020103"], sun:"#ffb96b", sunGlow:"rgba(255,150,80,.35)",
+      shine:"255,150,90", sunK:0.55, shadow:"warm", embers:true },
+  ];
+  const TANKS = [
+    { name:"Starter Bowl",    price:0,        max:1, sub:"cosy for the little ones" },
+    { name:"Reef Tank",       price:300000,   max:2, sub:"room for sharks and rays" },
+    { name:"Leviathan Vault", price:30000000, max:3, sub:"dark glass for old souls" },
+  ];
+  const pondNow = () => PONDS[state.pond];
+
+  // ---------- derived stats (all upgrade-driven; tuned to ~72h to 100%) ----------
+  const reachFrac  = () => Math.min(1, 0.16 + state.lineUp * 0.028); // 30 buys -> abyss
+  const catchLimit = () => 1 + state.netUp;                           // beginner = 1 per cast
+  const reelSpeed  = () => 430 + state.reelUp * 95;
+  const sellMult   = () => 1 + state.hookUp * 0.08;
+  const DROP_SPEED = 300;
+
+  const surfaceY   = () => H * 0.16;
+  const worldDepth = () => (H - surfaceY()) * 2;   // two screens of water — the deep is a place you travel to
+  const maxDepthY  = () => surfaceY() + reachFrac() * worldDepth();
+
+  // ---------- fish population (each water has its own school) ----------
+  let fish = [], tank = [];
+  function makeFish() {
+    const pool = SPECIES.filter(s => s.pond === state.pond);
+    let total = pool.reduce((a, s) => a + s.rare, 0);
+    let r = Math.random() * total, picked = pool[0];
+    for (const s of pool) { if ((r -= s.rare) <= 0) { picked = s; break; } }
+    const depth = rand(picked.minD, picked.maxD);
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    return {
+      s: picked, x: dir === 1 ? -40 : W + 40,
+      y: surfaceY() + depth * worldDepth(),
+      vx: dir * rand(18, 46) * (1 + picked.minD) / (picked.big || 1) * (picked.body === "jelly" ? 0.35 : 1),
+      wob: Math.random() * Math.PI * 2, caught: false, ox: 0, oy: 0,
+    };
+  }
+  function ensureFish() {
+    const target = Math.round(Math.min(26, (W * worldDepth()) / 42000));
+    while (fish.length < target) fish.push(makeFish());
+  }
+
+  // ---------- hook ----------
+  const hook = { x: 0, y: 0, tx: 0, state: "idle", caught: [] };
+  let stealCd = 0, stolenThisCast = false, cam = 0, prowler = null;
+  function cast() {
+    if (state.view !== "fish") return;
+    if (hook.state === "idle") {
+      hook.state = "dropping"; hook.y = surfaceY(); hook.caught = [];
+      stolenThisCast = false; hideHint(); Snd.blip("splash");
+    }
+    else if (hook.state === "dropping") { hook.state = "reeling"; }
+  }
+  // no keep-or-sell — the haul banks itself, new species swim straight home
+  function resolveCatch() {
+    const got = hook.caught;
+    hook.caught = []; hook.state = "idle";
+    fish = fish.filter(f => !f.caught); // free their slots so the sea restocks
+    if (got.length) {
+      let sum = 0; const news = [];
+      for (const f of got) {
+        sum += Math.round(f.s.gold * sellMult());
+        if (!state.collection[f.s.id]) news.push(f.s.name);
+        state.collection[f.s.id] = (state.collection[f.s.id] || 0) + 1;
+      }
+      state.gold += sum;
+      floatText(hook.x, surfaceY() + 34, "+$" + sum.toLocaleString(), "#ffce4a");
+      Snd.blip("coin");
+      if (news.length) { showBanner("New species!", news.join(" · ")); rebuildTank(); }
+      Quests.event("haul", got.length, !stolenThisCast);
+      Quests.check();
+      save();
+    }
+    syncHud();
+  }
+
+  const floats = [];
+  const floatText = (x, y, txt, color) => floats.push({ x, y, txt, color, life: 1 });
+
+  // Grab any fish touching the hook — runs on the way down AND up, so a fish
+  // beside the hook as it rises still counts (and the thin early reach is fairer).
+  function tryCatch() {
+    if (hook.caught.length >= catchLimit()) return;
+    for (const f of fish) {
+      if (f.caught || f.prowl) continue; // a lunging predator can't be hooked — dodge it
+      const dx = f.x - hook.x, dy = f.y - hook.y;
+      if (dx * dx + dy * dy < (f.s.size * 0.85 + 13) ** 2) {
+        f.caught = true; f.prowl = false; f.ox = dx * 0.3; f.oy = f.s.size * 0.5;
+        hook.caught.push(f);
+        floatText(f.x, f.y - f.s.size, f.s.name, f.s.color);
+        Snd.blip("pop");
+        if (hook.caught.length >= catchLimit()) break;
+      }
+    }
+    syncHud();
+  }
+
+  // ---------- input ----------
+  function toStage(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  const clampX = (x) => Math.max(26, Math.min(W - 26, x));
+  cv.addEventListener("pointermove", (e) => { hook.tx = clampX(toStage(e).x); });
+  cv.addEventListener("pointerdown", (e) => { if (state.view !== "fish") return; hook.tx = clampX(toStage(e).x); cast(); });
+  window.addEventListener("keydown", (e) => { if (e.code === "Space") { e.preventDefault(); cast(); } });
+
+  // ---------- HUD ----------
+  const el = (id) => document.getElementById(id);
+  const goldEl = el("gold"), reachEl = el("reach-pct"), dotsEl = el("dots"),
+        castBtn = el("btn-cast"), hint = el("hint");
+
+  const fmtGold = n => n >= 1e9 ? (n / 1e9).toFixed(2) + "B"
+    : n >= 1e6 ? (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M"
+    : n >= 1e5 ? Math.round(n / 1e3) + "k"
+    : Math.floor(n).toLocaleString();
+  function syncHud() {
+    goldEl.textContent = fmtGold(state.gold);
+    reachEl.textContent = Math.round(reachFrac() * 100) + "%";
+    const lim = catchLimit();
+    if (dotsEl.childElementCount !== lim) {
+      dotsEl.innerHTML = "";
+      for (let i = 0; i < lim; i++) { const d = document.createElement("div"); d.className = "dot"; dotsEl.appendChild(d); }
+    }
+    const got = hook.caught.length;
+    [...dotsEl.children].forEach((d, i) => d.classList.toggle("on", i < got));
+    castBtn.textContent = hook.state === "idle" ? "Cast" : "Reel";
+    castBtn.classList.toggle("reeling", hook.state !== "idle");
+  }
+
+  let hintHidden = false;
+  function hideHint() { if (!hintHidden) { hintHidden = true; hint.style.opacity = 0; } }
+
+  function syncBrand() {
+    const b = document.querySelector(".brand span");
+    if (b) b.textContent = state.pond === 0 ? "a cozy little fishing trip" : pondNow().name.toLowerCase();
+  }
+
+  // ---------- sound: every water sings its own song ----------
+  const MOODS = [
+    { chord: [174.6, 220.0, 261.6], scale: [523.3, 587.3, 659.3, 784, 880],   lp: 640, plink: [2.5, 6] },   // backyard: warm dusk
+    { chord: [196.0, 246.9, 293.7], scale: [587.3, 659.3, 784, 880, 1174.7],  lp: 820, plink: [1.8, 4.5] }, // garden: bright, ornamental
+    { chord: [164.8, 196.0, 246.9], scale: [493.9, 587.3, 659.3, 740, 880],   lp: 700, plink: [2, 5] },     // kelp: green and swaying
+    { chord: [146.8, 220.0, 293.7], scale: [440, 523.3, 587.3, 659.3, 880],   lp: 500, plink: [3, 7] },     // sea: open fifths, wide
+    { chord: [220.0, 277.2, 329.6], scale: [880, 1046.5, 1174.7, 1318.5],     lp: 900, plink: [2.2, 5.5] }, // fjord: glassy, aurora-bright
+    { chord: [55.0, 55.7, 82.4],    scale: [110, 130.8, 164.8],               lp: 220, plink: [4, 9] },     // trench: cold, enormous
+    { chord: [65.4, 98.0, 130.8],   scale: [261.6, 329.6, 392, 523.3],        lp: 380, plink: [3, 7] },     // hadal: dark, but warm — a hearth at the bottom of the world
+  ];
+  const Snd = {
+    ac: null, oscs: [], gain: null, lp: null, mood: -1, plinkTimer: 0,
+    unlock() {
+      if (this.ac || state.muted) return;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        this.ac = new AC();
+        this.gain = this.ac.createGain(); this.gain.gain.value = 0;
+        this.lp = this.ac.createBiquadFilter(); this.lp.type = "lowpass"; this.lp.frequency.value = 640;
+        this.gain.connect(this.lp); this.lp.connect(this.ac.destination);
+        for (const f of MOODS[0].chord) {
+          const o = this.ac.createOscillator(), og = this.ac.createGain();
+          o.type = "triangle"; o.frequency.value = f; og.gain.value = 0.33;
+          o.connect(og); og.connect(this.gain); o.start();
+          this.oscs.push(o);
+        }
+        this.gain.gain.linearRampToValueAtTime(0.035, this.ac.currentTime + 3);
+        this.mood = -1;
+        this.setMood(state.pond);
+        this.schedulePlink();
+      } catch (e) {}
+    },
+    setMood(p) {
+      if (p === this.mood) return;
+      this.mood = p;
+      if (!this.ac) return;
+      const t = this.ac.currentTime, M = MOODS[p];
+      this.oscs.forEach((o, i) => { try { o.frequency.exponentialRampToValueAtTime(M.chord[i], t + 3.5); } catch (e) {} });
+      try { this.lp.frequency.linearRampToValueAtTime(M.lp, t + 3.5); } catch (e) {}
+      if (p === 5) this.blip("boom");
+      else if (p === 6) { this.tone(65.4, 2.4, 0.05, "sine"); this.tone(98, 2.0, 0.03, "sine", 0.15); }
+      this.schedulePlink(); // re-pace the ambience to the new water
+    },
+    schedulePlink() {
+      clearTimeout(this.plinkTimer);
+      const M = MOODS[Math.max(0, this.mood)];
+      this.plinkTimer = setTimeout(() => {
+        if (this.ac && !state.muted && document.visibilityState === "visible") {
+          const MM = MOODS[Math.max(0, this.mood)]; // resolve fresh — the water may have changed since arming
+          const f = MM.scale[Math.floor(Math.random() * MM.scale.length)];
+          this.tone(f, 0.9, 0.014, this.mood >= 5 ? "sine" : "triangle");
+        }
+        this.schedulePlink();
+      }, (M.plink[0] + Math.random() * (M.plink[1] - M.plink[0])) * 1000);
+    },
+    tone(f, dur, vol, type, when) {
+      if (!this.ac || state.muted) return;
+      try {
+        const t = this.ac.currentTime + (when || 0);
+        const o = this.ac.createOscillator(), g = this.ac.createGain();
+        o.type = type || "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g); g.connect(this.ac.destination);
+        o.start(t); o.stop(t + dur);
+      } catch (e) {}
+    },
+    blip(kind) {
+      if (!this.ac || state.muted) return;
+      if (kind === "splash") { this.tone(320, 0.12, 0.02, "triangle"); this.tone(180, 0.2, 0.015, "sine", 0.03); }
+      else if (kind === "pop") this.tone(660, 0.07, 0.02, "sine");
+      else if (kind === "coin") { this.tone(880, 0.06, 0.018, "square"); this.tone(1318.5, 0.09, 0.014, "square", 0.06); }
+      else if (kind === "bite") { this.tone(110, 0.16, 0.05, "sawtooth"); this.tone(72, 0.22, 0.04, "sawtooth", 0.05); }
+      else if (kind === "quest") { [523.3, 659.3, 784].forEach((f, i) => this.tone(f, 0.14, 0.02, "triangle", i * 0.09)); }
+      else if (kind === "boom") { this.tone(48, 1.6, 0.09, "sine"); this.tone(36, 2.2, 0.06, "sine", 0.1); }
+    },
+    setMuted(m) {
+      state.muted = m;
+      if (this.ac) this.ac[m ? "suspend" : "resume"]();
+      else if (!m) this.unlock();
+    },
+  };
+  window.addEventListener("pointerdown", () => Snd.unlock(), { once: false });
+
+  // ---------- grandpa's journal: story-paced goals so progress never feels like saving ----------
+  const QUESTS = [
+    { story: "Grandpa's old rod still hums in your hands. Page one of his journal reads: 'Start small. Everything starts small.'", hint: "Catch your first fish", goal: { total: 1 }, reward: 30 },
+    { story: "'Anchovies rise at dusk. Three make a supper, kid.'", hint: "Catch 3 Anchovies", goal: { species: "anchovy", n: 3 }, reward: 60 },
+    { story: "'The clownfish hide near the lilies. Be gentle with them.'", hint: "Catch 2 Clownfish", goal: { species: "clown", n: 2 }, reward: 140 },
+    { story: "'A good line reaches where the light won't.'", hint: "Upgrade Longer Line to Lv 3", goal: { gear: "lineUp", n: 3 }, reward: 220 },
+    { story: "'Bass fight ugly. Bring me two anyway.'", hint: "Catch 2 Bass", goal: { species: "bass", n: 2 }, reward: 320 },
+    { story: "'Something glows down there. I've seen it on the still nights.'", hint: "Catch a Lanternfish", goal: { species: "lantern", n: 1 }, reward: 550 },
+    { story: "'The anglerfish is a thief with a lamp. When you see the red eye lock on — swim your hook away, fast.'", hint: "Land 4+ fish in one cast", goal: { haul: 4 }, reward: 950 },
+    { story: "'I saved for years to see the Goldfish Garden. Don't wait as long as I did.'", hint: "Buy the Goldfish Garden", goal: { pond: 1 }, reward: 2500 },
+    { story: "A new page, pressed flat: 'Gold in the water, gold in the heart. The ranchu understand.'", hint: "Catch 3 Golden Ranchu", goal: { species: "ranchu", n: 3 }, reward: 2200 },
+    { story: "'The celestial ones stare at the sky their whole lives. I never managed to catch one.'", hint: "Catch a Celestial Goldfish", goal: { species: "celest", n: 1 }, reward: 6500 },
+    { story: "'Fill your rooms with color, kid. All of them.'", hint: "Discover 12 species", goal: { dex: 12 }, reward: 10000 },
+    { story: "'Past the garden wall the kelp sways like slow green weather. Go walk in those woods.'", hint: "Buy the Kelp Forest", goal: { pond: 2 }, reward: 28000 },
+    { story: "'The seadragon dresses as the forest. Look twice at every leaf.'", hint: "Catch a Leafy Seadragon", goal: { species: "dragon", n: 1 }, reward: 40000 },
+    { story: "'A moray took my catch right off the line, back in the weeds. Lose one. Learn.'", hint: "Lose a fish to a predator", goal: { stolen: true }, reward: 35000 },
+    { story: "'The sea pays a sailor's wage. It's time.'", hint: "Buy the Open Sea", goal: { pond: 3 }, reward: 65000 },
+    { story: "'Keep moving out there! A moving hook is a living hook.'", hint: "Land 6+ fish in one clean cast", goal: { clean: 6 }, reward: 90000 },
+    { story: "'The hammerhead knocks on the door of the deep.'", hint: "Catch a Hammerhead", goal: { species: "hammer", n: 1 }, reward: 160000 },
+    { story: "'Rays fly. Nothing else down there flies.'", hint: "Catch 3 Moonlit Rays", goal: { species: "ray", n: 3 }, reward: 240000 },
+    { story: "'Glass and patience. Get the big tank — some souls need room to turn around.'", hint: "Buy the Reef Tank", goal: { tank: 1 }, reward: 320000 },
+    { story: "'North of everything, the sky dances green over black water. I fished a whole winter under those lights.'", hint: "Buy the Frozen Fjord", goal: { pond: 4 }, reward: 700000 },
+    { story: "'A unicorn lives up there. I am not joking, kid.'", hint: "Catch a Narwhal", goal: { species: "narwhal", n: 1 }, reward: 900000 },
+    { story: "'Something older than the trench patrols under the ice. It took my biggest catch and my second-best hat.'", hint: "Catch a Greenland Shark", goal: { species: "gshark", n: 1 }, reward: 2200000 },
+    { story: "The ink shakes here: 'I heard it sing once. Deeper than sound. Reach further than I did.'", hint: "Max out the Longer Line", goal: { gear: "lineUp", n: 30 }, reward: 1500000 },
+    { story: "'Save everything. The trench does not haggle.'", hint: "Buy The Trench", goal: { pond: 5 }, reward: 8000000 },
+    { story: "'The coelacanth is older than the trees you climbed as a boy. Show it respect.'", hint: "Catch a Coelacanth", goal: { species: "coel", n: 1 }, reward: 3000000 },
+    { story: "'The armored one bit my line clean through. Guard your haul down there.'", hint: "Catch a Dunkleosteus", goal: { species: "dunk", n: 1 }, reward: 9500000 },
+    { story: "A water-stained page: 'If you're reading this, I never caught it. Catch it for me.'", hint: "Catch The Leviathan", goal: { species: "levi", n: 1 }, reward: 30000000 },
+    { story: "'…and give it a home worthy of its years.'", hint: "Own the Leviathan Vault", goal: { tank: 2 }, reward: 12000000 },
+    { story: "The handwriting changes — steadier, warmer: 'Past the dark there is a garden. The cold ends. The lights are kind.'", hint: "Buy The Hadal Garden", goal: { pond: 6 }, reward: 60000000 },
+    { story: "'The jellies down there burn like hearth coals. Catch three — they don't mind.'", hint: "Catch 3 Ember Jellies", goal: { species: "emberj", n: 3 }, reward: 15000000 },
+    { story: "The very last line: 'If the Old Lantern finds you, don't be afraid. It only wants to see who kept the fire.'", hint: "Catch The Old Lantern", goal: { species: "oldlantern", n: 1 }, reward: 80000000 },
+    { story: "The journal's final page is blank. It's yours to write now.", hint: "Discover all 45 species", goal: { dex: 45 }, reward: 100000000 },
+  ];
+  const Quests = {
+    cur() { return QUESTS[state.qi] || null; },
+    // event goals arrive from gameplay; state goals are re-checked after any change
+    event(kind, n, clean) {
+      const q = this.cur(); if (!q) return;
+      if (kind === "stolen" && q.goal.stolen) this.complete();
+      else if (kind === "haul") {
+        if (q.goal.haul && n >= q.goal.haul) this.complete();
+        else if (q.goal.clean && n >= q.goal.clean && clean) this.complete();
+      }
+    },
+    met(q) {
+      const g = q.goal, col = state.collection;
+      if (g.total) return Object.values(col).reduce((a, b) => a + b, 0) >= g.total;
+      if (g.species) return (col[g.species] || 0) >= g.n;
+      if (g.gear) return state[g.gear] >= g.n;
+      if (g.pond !== undefined) return state.pondsOwned.includes(g.pond);
+      if (g.tank !== undefined) return state.tank >= g.tank;
+      if (g.dex) return Object.keys(col).length >= g.dex;
+      return false; // event goals never pass a state check
+    },
+    check() {
+      let q = this.cur();
+      while (q && this.met(q)) { this.complete(); q = this.cur(); }
+      syncQuest();
+    },
+    rescan() { // after a quest-list change: fast-forward past already-met story beats (no rewards)
+      const isEvent = i => { const g = QUESTS[i].goal; return !!(g.haul || g.stolen || g.clean); };
+      let qi = 0;
+      while (qi < QUESTS.length) {
+        if (this.met(QUESTS[qi])) { qi++; continue; }
+        if (isEvent(qi)) {
+          // a veteran who already met a LATER state goal is clearly past this event beat
+          let laterMet = false;
+          for (let j = qi + 1; j < QUESTS.length; j++) if (!isEvent(j)) { laterMet = this.met(QUESTS[j]); break; }
+          if (laterMet) { qi++; continue; }
+        }
+        break;
+      }
+      state.qi = qi;
+    },
+    complete() {
+      const q = this.cur(); if (!q) return;
+      state.gold += q.reward;
+      state.qi++;
+      showBanner("Journal · +$" + q.reward.toLocaleString(), this.cur() ? "a new page turns…" : "the story is yours now");
+      Snd.blip("quest");
+      save(); syncHud(); syncQuest();
+    },
+  };
+  state.qi = state.qi || 0;
+  function syncQuest() {
+    const pill = el("quest"), q = Quests.cur();
+    if (!q) { pill.style.display = "none"; return; }
+    pill.style.display = "";
+    pill.textContent = "📜 " + q.hint;
+  }
+  function openNote() {
+    const q = Quests.cur(); if (!q) return;
+    el("note-story").textContent = q.story;
+    el("note-goal").textContent = q.hint;
+    el("note-reward").textContent = "$" + q.reward.toLocaleString();
+    el("note-overlay").classList.add("open");
+  }
+
+  let bannerTimer = null;
+  function showBanner(title, sub) {
+    const b = el("banner");
+    b.querySelector("b").textContent = title;
+    b.querySelector("span").textContent = sub;
+    b.classList.remove("show"); void b.offsetWidth; b.classList.add("show");
+    clearTimeout(bannerTimer);
+    bannerTimer = setTimeout(() => b.classList.remove("show"), 2000);
+  }
+  castBtn.addEventListener("click", cast);
+
+  function setView(v) {
+    state.view = v;
+    el("tab-fish").setAttribute("aria-selected", v === "fish");
+    el("tab-room").setAttribute("aria-selected", v === "room");
+    el("bottom-fish").style.display = v === "fish" ? "flex" : "none";
+    if (v === "room") {
+      for (const f of hook.caught) f.caught = false; // the ones on the line slip free
+      hook.state = "idle"; hook.caught = [];
+      for (const b of bubbles) b.y = rand(H * 0.2, H * 0.75); // bubbles re-seed into tank space
+      rebuildTank();
+    }
+    syncHud();
+  }
+  el("tab-fish").addEventListener("click", () => setView("fish"));
+  el("tab-room").addEventListener("click", () => setView("room"));
+
+  // ---------- shop (gold is the only currency; tuned to ~72h to 100%) ----------
+  const overlay = el("overlay"), shopList = el("shop-list");
+  const UPGRADES = [
+    { key:"lineUp", ic:"🎣", name:"Longer Line", desc:"Reach deeper, richer water",
+      cost:(n)=>Math.round(40 * Math.pow(1.36, n)),  max:30 },
+    { key:"netUp",  ic:"🧺", name:"Bigger Net",  desc:"+1 fish per cast",
+      cost:(n)=>Math.round(140 * Math.pow(1.62, n)), max:11 },
+    { key:"reelUp", ic:"⚙️", name:"Faster Reel", desc:"Reel in quicker",
+      cost:(n)=>Math.round(90 * Math.pow(1.55, n)),  max:10 },
+    { key:"hookUp", ic:"✨", name:"Golden Hook", desc:"+8% sell value on every fish",
+      cost:(n)=>Math.round(120 * Math.pow(1.60, n)), max:30 },
+  ];
+  function shopRow(ic, title, sub, btnHtml) {
+    const row = document.createElement("div");
+    row.className = "up";
+    row.innerHTML = `<div class="ic">${ic}</div><div class="body"><b>${title}</b><p>${sub}</p></div>${btnHtml}`;
+    return row;
+  }
+  function sectionHead(txt) {
+    const h = document.createElement("p");
+    h.style.cssText = "font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);margin:14px 2px 8px;font-weight:700";
+    h.textContent = txt;
+    return h;
+  }
+  const priceBtn = (price, afford) =>
+    `<button class="buy" ${afford ? "" : "disabled"}><span class="c">$</span>${price.toLocaleString()}</button>`;
+  function renderShop() {
+    shopList.innerHTML = "";
+    shopList.appendChild(sectionHead("Gear"));
+    for (const u of UPGRADES) {
+      const n = state[u.key], maxed = n >= u.max, cost = u.cost(n);
+      const btn = maxed ? `<button class="buy" disabled>Maxed</button>` : priceBtn(cost, state.gold >= cost);
+      const row = shopRow(u.ic, `${u.name} <span style="color:var(--ink-dim);font-weight:600">Lv ${n}/${u.max}</span>`, u.desc, btn);
+      if (!maxed) row.querySelector(".buy").addEventListener("click", () => {
+        if (state.gold < cost) return;
+        state.gold -= cost; state[u.key]++; save(); renderShop(); syncHud(); Quests.check();
+      });
+      shopList.appendChild(row);
+    }
+    shopList.appendChild(sectionHead("Waters"));
+    PONDS.forEach((p, i) => {
+      const owned = state.pondsOwned.includes(i), here = state.pond === i;
+      const btn = here ? `<button class="buy" disabled>Here</button>`
+        : owned ? `<button class="buy">Sail</button>`
+        : priceBtn(p.price, state.gold >= p.price);
+      const row = shopRow(["🏡","⛩️","🌿","🌊","🧊","🕳️","🏮"][i], p.name, p.sub, btn);
+      if (!here) row.querySelector(".buy").addEventListener("click", () => {
+        if (!owned) {
+          if (state.gold < p.price) return;
+          state.gold -= p.price; state.pondsOwned.push(i);
+        }
+        state.pond = i; fish = []; hook.state = "idle"; hook.caught = [];
+        Snd.setMood(i);
+        save(); renderShop(); syncHud(); syncBrand();
+        Quests.check();
+      });
+      shopList.appendChild(row);
+    });
+    shopList.appendChild(sectionHead("Aquarium"));
+    TANKS.forEach((t, i) => {
+      const ownedT = state.tank >= i, next = i === state.tank + 1;
+      const btn = ownedT ? `<button class="buy" disabled>${i === state.tank ? "Yours" : "Owned"}</button>`
+        : next ? priceBtn(t.price, state.gold >= t.price)
+        : `<button class="buy" disabled>Locked</button>`;
+      const row = shopRow(["🫙","🪸","🌑"][i], t.name, t.sub, btn);
+      if (next) row.querySelector(".buy").addEventListener("click", () => {
+        if (state.gold < t.price) return;
+        state.gold -= t.price; state.tank = i; rebuildTank();
+        save(); renderShop(); syncHud(); Quests.check();
+      });
+      shopList.appendChild(row);
+    });
+  }
+  el("btn-shop").addEventListener("click", () => { renderShop(); overlay.classList.add("open"); });
+  el("shop-close").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+
+  // ---------- aquarium (bigger tanks welcome bigger fish) ----------
+  const tankAllows = s => (s.big || 1) <= TANKS[state.tank].max;
+  function rebuildTank() {
+    tank = [];
+    for (const id in state.collection) {
+      const s = byId[id]; if (!s || !tankAllows(s)) continue;
+      const swimmers = Math.min(3, 1 + Math.floor(state.collection[id] / 4));
+      for (let i = 0; i < swimmers; i++)
+        tank.push({ s, x: rand(60, 400), y: rand(0.2, 0.85),
+          vx: (Math.random() < .5 ? 1 : -1) * rand(14, 34) / (s.big || 1), wob: Math.random() * Math.PI * 2 });
+    }
+  }
+  rebuildTank();
+
+  // ---------- ambient decor (fraction-based so it scales) ----------
+  const STARS = Array.from({ length: 46 }, () => ({ fx: rand(0,1), fy: rand(0,0.62), ph: rand(0,6.28), r: rand(0.6,1.7) }));
+  const CLOUDS = Array.from({ length: 4 }, (_, i) => ({ fx: rand(0.05,0.9), fy: rand(0.2,0.7), s: rand(0.7,1.3), drift: rand(2,6) }));
+
+  // ---------- resize ----------
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = stage.clientWidth; H = stage.clientHeight;
+    cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (!hook.x) { hook.x = W / 2; hook.tx = W / 2; }
+    hook.x = clampX(hook.x); hook.tx = clampX(hook.tx);
+    ensureFish();
+  }
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  // ---------- drawing ----------
+  function drawSky() {
+    const sY = surfaceY(), P = pondNow();
+    const sky = ctx.createLinearGradient(0, 0, 0, sY);
+    sky.addColorStop(0, P.sky[0]);
+    sky.addColorStop(0.5, P.sky[1]);
+    sky.addColorStop(0.8, P.sky[2]);
+    sky.addColorStop(1, P.sky[3]);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, sY);
+
+    // stars (upper sky)
+    for (const st of STARS) {
+      const y = st.fy * sY;
+      const tw = 0.5 + 0.5 * Math.sin(T * 2 + st.ph);
+      ctx.globalAlpha = (1 - st.fy / 0.62) * tw * 0.9;
+      ctx.fillStyle = "#fff7e6";
+      ctx.beginPath(); ctx.arc(st.fx * W, y, st.r, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    if (P.aurora) { // the sky dances green over the fjord
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const AC = ["rgba(110,255,180,.09)", "rgba(140,200,255,.07)", "rgba(200,140,255,.06)"];
+      for (let b = 0; b < 3; b++) {
+        ctx.fillStyle = AC[b];
+        ctx.beginPath();
+        for (let x = 0; x <= W; x += 24) {
+          const y = sY * (0.12 + b * 0.1) + Math.sin(x * 0.012 + T * 0.35 + b * 2.1) * sY * 0.09;
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        for (let x = W; x >= 0; x -= 24) {
+          const y = sY * (0.34 + b * 0.1) + Math.sin(x * 0.011 + T * 0.3 + b * 1.7) * sY * 0.07;
+          ctx.lineTo(x, y);
+        }
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // low sun (a pale, distant moon over the darkest waters)
+    const sunX = W * 0.76, sunY = sY * 0.82, sunR = Math.max(18, sY * 0.16);
+    const glow = ctx.createRadialGradient(sunX, sunY, sunR * 0.4, sunX, sunY, sunR * 4);
+    glow.addColorStop(0, P.sunGlow); glow.addColorStop(1, "rgba(255,214,150,0)");
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(sunX, sunY, sunR * 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = P.sun; ctx.beginPath(); ctx.arc(sunX, sunY, sunR * (P.sunK || 1), 0, Math.PI * 2); ctx.fill();
+
+    // soft clouds
+    for (const c of CLOUDS) {
+      const cx = ((c.fx * W + T * c.drift) % (W + 160)) - 80;
+      const cy = c.fy * sY, s = c.s;
+      ctx.fillStyle = P.cloud;
+      for (const [dx, dy, r] of [[0,0,20],[22,4,16],[-20,5,15],[8,-8,15]]) {
+        ctx.beginPath(); ctx.ellipse(cx + dx*s, cy + dy*s, r*s, r*0.7*s, 0, 0, Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  function drawWater() {
+    const sY = surfaceY(), P = pondNow();
+    // each stratum a shade darker than the one above it
+    const D = worldDepth();
+    const g = ctx.createLinearGradient(0, sY, 0, sY + D);
+    g.addColorStop(0, P.water[0]);
+    g.addColorStop(0.16, P.water[1]);
+    g.addColorStop(0.44, P.water[2]);
+    g.addColorStop(0.72, P.water[3]);
+    g.addColorStop(1, P.water[4]);
+    ctx.fillStyle = g; ctx.fillRect(0, sY, W, D + 40);
+
+    // surface reflection in the water's own light
+    const warm = "rgba(" + P.shine + ",";
+    const refl = ctx.createLinearGradient(0, sY, 0, sY + 40);
+    refl.addColorStop(0, warm + ".3)"); refl.addColorStop(1, warm + "0)");
+    ctx.fillStyle = refl; ctx.fillRect(0, sY, W, 40);
+    ctx.fillStyle = warm + ".45)";
+    ctx.fillRect(0, sY - 1, W, 2);
+
+    if (P.embers) { // warm sparks rise through the dark — a hearth at the bottom of the world
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 18; i++) {
+        const spd = 8 + (i * 13) % 11;
+        const ey = sY + worldDepth() - ((T * spd + i * 137) % worldDepth());
+        const ex2 = ((i * 197) % W) + Math.sin(T * 0.5 + i) * 14;
+        const a = 0.25 + 0.2 * Math.sin(T * 1.4 + i * 2.2);
+        ctx.globalAlpha = Math.max(0, a);
+        ctx.fillStyle = i % 3 ? "#ffb96b" : "#ff8a5e";
+        ctx.beginPath(); ctx.arc(ex2, ey, 1.4 + (i * 7) % 3 * 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = Math.max(0, a * 0.35);
+        ctx.beginPath(); ctx.arc(ex2, ey, 4 + (i * 7) % 3, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
+
+    // something enormous passes, far below
+    if (P.shadow) {
+      const per = 26, tm = T % per;
+      if (tm < 12) {
+        const leg = tm / 12, ltr = Math.floor(T / per) % 2 === 0;
+        const lx = W * (ltr ? -0.35 + 1.7 * leg : 1.35 - 1.7 * leg);
+        const ly = sY + worldDepth() * 0.85 + Math.sin(leg * Math.PI * 2) * 20;
+        ctx.save();
+        ctx.globalAlpha = 0.16 + 0.08 * Math.sin(leg * Math.PI);
+        ctx.fillStyle = P.shadow === "warm" ? "#0a0504" : "#000208";
+        ctx.translate(lx, ly); ctx.scale(ltr ? 1 : -1, 1);
+        ctx.beginPath(); ctx.ellipse(0, 0, 130, 30, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-115, 0); ctx.lineTo(-180, -26); ctx.lineTo(-180, 26); ctx.closePath(); ctx.fill();
+        if (P.shadow === "warm") { // the Old Lantern's light, far off in the black
+          const lg = ctx.createRadialGradient(95, -8, 2, 95, -8, 60);
+          lg.addColorStop(0, "rgba(255,185,107,.5)"); lg.addColorStop(1, "rgba(255,185,107,0)");
+          ctx.globalAlpha = 0.5 + 0.2 * Math.sin(leg * Math.PI);
+          ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(95, -8, 60, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+
+    // max-reach shimmer
+    const mY = maxDepthY();
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,224,170,.5)"; ctx.setLineDash([7, 9]); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(0, mY); ctx.lineTo(W, mY); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,224,170,.8)"; ctx.font = "600 10px " + FONT();
+    ctx.textAlign = "right"; ctx.fillText("MAX REACH", W - 10, mY - 6); ctx.textAlign = "left";
+    ctx.restore();
+  }
+
+  // ---------- signature silhouettes: the big ones carry their own dread ----------
+  function drawShark(g, s, wob) {
+    const S = s.size, darker = shade(s.color, -0.3), belly = shade(s.color, 0.5);
+    const tw = Math.sin(wob) * S * 0.12;
+    // crescent tail
+    g.fillStyle = darker;
+    g.beginPath();
+    g.moveTo(-S * 0.85, tw * 0.5);
+    g.quadraticCurveTo(-S * 1.35, tw - S * 0.55, -S * 1.2, tw - S * 0.62);
+    g.quadraticCurveTo(-S * 1.05, tw - S * 0.1, -S * 1.18, tw + S * 0.42);
+    g.quadraticCurveTo(-S * 1.3, tw + S * 0.48, -S * 0.85, tw * 0.5);
+    g.fill();
+    // torpedo body: sharp snout, muscled back
+    g.fillStyle = s.color;
+    g.beginPath();
+    g.moveTo(S * 1.05, -S * 0.02);
+    g.quadraticCurveTo(S * 0.55, -S * 0.42, -S * 0.2, -S * 0.38);
+    g.quadraticCurveTo(-S * 0.75, -S * 0.3, -S * 0.95, tw * 0.4);
+    g.quadraticCurveTo(-S * 0.7, S * 0.22, -S * 0.1, S * 0.3);
+    g.quadraticCurveTo(S * 0.6, S * 0.34, S * 1.05, -S * 0.02);
+    g.fill();
+    // pale belly
+    g.fillStyle = belly; g.globalAlpha *= 0.55;
+    g.beginPath();
+    g.moveTo(S * 0.95, S * 0.02);
+    g.quadraticCurveTo(S * 0.4, S * 0.34, -S * 0.3, S * 0.28);
+    g.quadraticCurveTo(S * 0.3, S * 0.14, S * 0.95, S * 0.02);
+    g.fill(); g.globalAlpha /= 0.55;
+    // tall dorsal
+    g.fillStyle = darker;
+    g.beginPath();
+    g.moveTo(S * 0.05, -S * 0.32);
+    g.quadraticCurveTo(-S * 0.05, -S * 0.85, -S * 0.3, -S * 0.78);
+    g.lineTo(-S * 0.32, -S * 0.3);
+    g.closePath(); g.fill();
+    // pectoral
+    g.beginPath();
+    g.moveTo(S * 0.15, S * 0.2);
+    g.quadraticCurveTo(-S * 0.1, S * 0.62, -S * 0.32, S * 0.55);
+    g.lineTo(-S * 0.05, S * 0.24);
+    g.closePath(); g.fill();
+    // gill slits
+    g.strokeStyle = darker; g.lineWidth = Math.max(1, S * 0.035); g.lineCap = "round";
+    for (let i = 0; i < 3; i++) {
+      g.beginPath(); g.arc(S * (0.32 - i * 0.09), -S * 0.02, S * 0.16, -0.5, 0.5); g.stroke();
+    }
+    if (s.hammer) {
+      // the door-knocker head
+      g.fillStyle = s.color;
+      g.beginPath(); g.ellipse(S * 0.95, -S * 0.02, S * 0.16, S * 0.42, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#0c1218";
+      g.beginPath(); g.arc(S * 0.98, -S * 0.36, S * 0.06, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(S * 0.98, S * 0.32, S * 0.06, 0, Math.PI * 2); g.fill();
+    } else {
+      // flat predator eye
+      g.fillStyle = "#0c1218";
+      g.beginPath(); g.arc(S * 0.62, -S * 0.14, S * 0.06, 0, Math.PI * 2); g.fill();
+      // a hint of grin
+      g.strokeStyle = "rgba(10,16,22,.6)"; g.lineWidth = Math.max(1, S * 0.04);
+      g.beginPath(); g.moveTo(S * 0.95, S * 0.08); g.quadraticCurveTo(S * 0.7, S * 0.18, S * 0.45, S * 0.16); g.stroke();
+    }
+  }
+  function drawRay(g, s, wob) {
+    const S = s.size, flap = Math.sin(wob) * 0.35;
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.6);
+      gl.addColorStop(0, s.glow + "66"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.6, 0, Math.PI * 2); g.fill();
+    }
+    // wings mid-flap
+    g.fillStyle = s.color;
+    g.beginPath();
+    g.moveTo(S * 0.75, 0);
+    g.quadraticCurveTo(0, -S * (0.75 + flap), -S * 0.55, -S * (0.35 + flap) * 0.5);
+    g.quadraticCurveTo(-S * 0.35, 0, -S * 0.55, S * (0.35 - flap) * 0.5);
+    g.quadraticCurveTo(0, S * (0.75 - flap), S * 0.75, 0);
+    g.fill();
+    // whip tail
+    g.strokeStyle = shade(s.color, -0.25); g.lineWidth = Math.max(1.2, S * 0.06); g.lineCap = "round";
+    g.beginPath(); g.moveTo(-S * 0.5, 0);
+    g.quadraticCurveTo(-S * 1.1, Math.sin(wob * 1.4) * S * 0.25, -S * 1.5, Math.sin(wob) * S * 0.35);
+    g.stroke();
+    // moon-speckles
+    g.fillStyle = "rgba(240,246,255,.7)";
+    for (const [px, py] of [[0.1, -0.2], [-0.2, 0.1], [0.25, 0.12], [-0.05, -0.38]]) {
+      g.beginPath(); g.arc(S * px, S * py, S * 0.045, 0, Math.PI * 2); g.fill();
+    }
+    // gentle eyes
+    g.fillStyle = "#122029";
+    g.beginPath(); g.arc(S * 0.5, -S * 0.08, S * 0.055, 0, Math.PI * 2); g.fill();
+  }
+  function drawSquidBody(g, s, wob) {
+    const S = s.size, sway = Math.sin(wob) * S * 0.1;
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.7);
+      gl.addColorStop(0, s.glow + "88"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.7, 0, Math.PI * 2); g.fill();
+    }
+    // tentacles trail behind
+    g.strokeStyle = shade(s.color, -0.15); g.lineWidth = Math.max(1.4, S * 0.09); g.lineCap = "round";
+    for (let i = 0; i < 5; i++) {
+      const off = (i - 2) * S * 0.14, ph = wob * 1.3 + i;
+      g.beginPath(); g.moveTo(-S * 0.3, off * 0.5);
+      g.quadraticCurveTo(-S * 0.75, off + Math.sin(ph) * S * 0.18, -S * 1.05, off * 1.3 + Math.cos(ph) * S * 0.22);
+      g.stroke();
+    }
+    // mantle (pointed cap forward)
+    const bg2 = g.createLinearGradient(0, -S * 0.5, 0, S * 0.5);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(1, shade(s.color, 0.35));
+    g.fillStyle = bg2;
+    g.beginPath();
+    g.moveTo(S * 0.95, sway * 0.3);
+    g.quadraticCurveTo(S * 0.45, -S * 0.5 + sway, -S * 0.25, -S * 0.34 + sway);
+    g.quadraticCurveTo(-S * 0.45, sway, -S * 0.25, S * 0.34 + sway);
+    g.quadraticCurveTo(S * 0.45, S * 0.5 + sway, S * 0.95, sway * 0.3);
+    g.fill();
+    // side fin frill
+    g.fillStyle = shade(s.color, -0.2);
+    g.beginPath(); g.ellipse(S * 0.6, sway * 0.3, S * 0.28, S * 0.14, -0.4, 0, Math.PI * 2); g.fill();
+    // big round eyes
+    g.fillStyle = "#fff";
+    g.beginPath(); g.arc(S * 0.05, S * 0.05 + sway, S * 0.16, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#122029";
+    g.beginPath(); g.arc(S * 0.08, S * 0.05 + sway, S * 0.09, 0, Math.PI * 2); g.fill();
+  }
+  function drawWhale(g, s, wob) {
+    const S = s.size, tw = Math.sin(wob) * S * 0.08;
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 4, 0, 0, S * 2);
+      gl.addColorStop(0, s.glow + "55"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 2, 0, Math.PI * 2); g.fill();
+    }
+    // wide two-lobe fluke
+    g.fillStyle = shade(s.color, -0.2);
+    g.beginPath(); g.moveTo(-S * 1.0, tw);
+    g.quadraticCurveTo(-S * 1.25, tw - S * 0.12, -S * 1.55, tw - S * 0.44);
+    g.quadraticCurveTo(-S * 1.28, tw - S * 0.04, -S * 1.26, tw);
+    g.quadraticCurveTo(-S * 1.28, tw + S * 0.04, -S * 1.55, tw + S * 0.44);
+    g.quadraticCurveTo(-S * 1.25, tw + S * 0.12, -S * 1.0, tw); g.fill();
+    // vast body: blunt brow, deep jaw, tapering tailstock
+    const bg2 = g.createLinearGradient(0, -S * 0.55, 0, S * 0.6);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(1, shade(s.color, 0.35));
+    g.fillStyle = bg2;
+    g.beginPath();
+    g.moveTo(S * 1.05, -S * 0.12);
+    g.quadraticCurveTo(S * 1.1, -S * 0.52, S * 0.35, -S * 0.55);
+    g.quadraticCurveTo(-S * 0.45, -S * 0.5, -S * 1.02, tw);
+    g.quadraticCurveTo(-S * 0.45, S * 0.3, S * 0.3, S * 0.42);
+    g.quadraticCurveTo(S * 1.06, S * 0.44, S * 1.05, -S * 0.12);
+    g.fill();
+    // low dorsal hump
+    g.fillStyle = shade(s.color, -0.15);
+    g.beginPath(); g.moveTo(-S * 0.32, -S * 0.45); g.quadraticCurveTo(-S * 0.46, -S * 0.63, -S * 0.6, -S * 0.4); g.closePath(); g.fill();
+    // the long mouth line
+    g.strokeStyle = "rgba(8,10,20,.6)"; g.lineWidth = Math.max(1.2, S * 0.035); g.lineCap = "round";
+    g.beginPath(); g.moveTo(S * 1.02, S * 0.06); g.quadraticCurveTo(S * 0.5, S * 0.32, S * 0.05, S * 0.27); g.stroke();
+    if (s.tusk) { // the unicorn of the fjord
+      g.fillStyle = "#efe8da";
+      g.beginPath(); g.moveTo(S * 0.98, -S * 0.16); g.lineTo(S * 1.85, -S * 0.3); g.lineTo(S * 1.0, -S * 0.06); g.closePath(); g.fill();
+      g.strokeStyle = "rgba(120,110,90,.45)"; g.lineWidth = Math.max(0.8, S * 0.02);
+      for (let i = 1; i < 4; i++) {
+        const u = i / 4;
+        g.beginPath(); g.moveTo(S * (0.98 + u * 0.75), -S * (0.16 + u * 0.1)); g.lineTo(S * (1.0 + u * 0.72), -S * (0.06 + u * 0.16)); g.stroke();
+      }
+    }
+    // flipper
+    g.fillStyle = shade(s.color, -0.22);
+    g.save(); g.translate(S * 0.28, S * 0.28); g.rotate(0.55 + Math.sin(wob) * 0.12);
+    g.beginPath(); g.ellipse(0, S * 0.15, S * 0.09, S * 0.27, 0, 0, Math.PI * 2); g.fill(); g.restore();
+    // belly grooves under the jaw
+    g.strokeStyle = "rgba(255,255,255,.13)"; g.lineWidth = Math.max(1, S * 0.028);
+    for (let i = 0; i < 4; i++) {
+      g.beginPath(); g.moveTo(S * (0.95 - i * 0.03), S * (0.14 + i * 0.07));
+      g.quadraticCurveTo(S * 0.45, S * (0.38 + i * 0.05), S * 0.05, S * (0.3 + i * 0.05)); g.stroke();
+    }
+    if (s.glow) { // constellation of glow-spots along the flank
+      g.fillStyle = s.glow;
+      for (let i = 0; i < 7; i++) {
+        const px = (((i * 53) % 89) / 89 - 0.5) * S * 1.4, py = (((i * 31) % 71) / 71 - 0.62) * S * 0.68;
+        g.beginPath(); g.arc(px, py, S * (0.025 + ((i * 13) % 5) * 0.008), 0, Math.PI * 2); g.fill();
+      }
+    }
+    // small solemn eye above the mouth's end
+    g.fillStyle = "#070a12";
+    g.beginPath(); g.arc(S * 0.78, S * 0.1, S * 0.05, 0, Math.PI * 2); g.fill();
+  }
+  function drawDunk(g, s, wob) {
+    const S = s.size, tw = Math.sin(wob) * S * 0.12, darker = shade(s.color, -0.3);
+    // muscular tail
+    g.fillStyle = darker;
+    g.beginPath();
+    g.moveTo(-S * 0.6, tw * 0.6);
+    g.quadraticCurveTo(-S * 1.15, tw - S * 0.42, -S * 1.3, tw - S * 0.2);
+    g.quadraticCurveTo(-S * 1.05, tw, -S * 1.3, tw + S * 0.3);
+    g.quadraticCurveTo(-S * 1.1, tw + S * 0.38, -S * 0.6, tw * 0.6);
+    g.fill();
+    // body
+    const bg2 = g.createLinearGradient(0, -S * 0.5, 0, S * 0.5);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(1, shade(s.color, 0.2));
+    g.fillStyle = bg2;
+    g.beginPath();
+    g.moveTo(S * 0.9, 0);
+    g.quadraticCurveTo(S * 0.5, -S * 0.5, -S * 0.15, -S * 0.42);
+    g.quadraticCurveTo(-S * 0.7, -S * 0.3, -S * 0.75, tw * 0.5);
+    g.quadraticCurveTo(-S * 0.7, S * 0.28, -S * 0.15, S * 0.4);
+    g.quadraticCurveTo(S * 0.5, S * 0.48, S * 0.9, 0);
+    g.fill();
+    // armored head plates (the signature)
+    g.fillStyle = shade(s.color, 0.55);
+    g.beginPath();
+    g.moveTo(S * 0.9, 0);
+    g.quadraticCurveTo(S * 0.62, -S * 0.48, S * 0.15, -S * 0.44);
+    g.lineTo(S * 0.1, S * 0.42);
+    g.quadraticCurveTo(S * 0.55, S * 0.46, S * 0.9, 0);
+    g.fill();
+    g.strokeStyle = darker; g.lineWidth = Math.max(1.2, S * 0.045);
+    g.beginPath(); g.moveTo(S * 0.15, -S * 0.44); g.lineTo(S * 0.1, S * 0.42); g.stroke();
+    g.beginPath(); g.moveTo(S * 0.55, -S * 0.3); g.lineTo(S * 0.5, S * 0.05); g.stroke();
+    // shear-jaw: jagged bone blades
+    g.fillStyle = "#e8e4da";
+    g.beginPath();
+    g.moveTo(S * 0.88, S * 0.02);
+    g.lineTo(S * 0.62, S * 0.1); g.lineTo(S * 0.72, S * 0.18); g.lineTo(S * 0.5, S * 0.24);
+    g.lineTo(S * 0.62, S * 0.3); g.lineTo(S * 0.45, S * 0.33); g.lineTo(S * 0.55, S * 0.2);
+    g.lineTo(S * 0.48, S * 0.14);
+    g.closePath(); g.fill();
+    // cold armored eye
+    g.fillStyle = s.glow || "#c9d6e8";
+    g.beginPath(); g.arc(S * 0.55, -S * 0.16, S * 0.09, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#05070c";
+    g.beginPath(); g.arc(S * 0.57, -S * 0.16, S * 0.05, 0, Math.PI * 2); g.fill();
+  }
+  function drawSerpent(g, s, wob) {
+    const S = s.size;
+    if (s.glow) {
+      const gl = g.createRadialGradient(S * 0.6, 0, 4, S * 0.6, 0, S * 1.6);
+      gl.addColorStop(0, s.glow + "44"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(S * 0.6, 0, S * 1.6, 0, Math.PI * 2); g.fill();
+    }
+    // long undulating body traced tail-to-head
+    const N = 9, pts = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      pts.push([S * (0.9 - u * 2.1), Math.sin(wob * 1.1 + u * 4.2) * S * 0.22 * (0.3 + u)]);
+    }
+    const wid = u => S * (0.3 * Math.pow(1 - u, 0.6) + 0.02);
+    g.fillStyle = s.color;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1] - wid(0));
+    for (let i = 1; i <= N; i++) g.lineTo(pts[i][0], pts[i][1] - wid(i / N));
+    for (let i = N; i >= 0; i--) g.lineTo(pts[i][0], pts[i][1] + wid(i / N));
+    g.closePath(); g.fill();
+    // dorsal frill down the spine
+    g.fillStyle = shade(s.color, 0.35);
+    for (let i = 1; i < N - 1; i += 1) {
+      const u = i / N, [px, py] = pts[i], h = S * 0.2 * (1 - u);
+      g.beginPath(); g.moveTo(px + S * 0.08, py - wid(u));
+      g.lineTo(px, py - wid(u) - h); g.lineTo(px - S * 0.1, py - wid(u));
+      g.closePath(); g.fill();
+    }
+    // head: blunt jaw, glowing eye, barbels
+    const hx = pts[0][0], hy = pts[0][1];
+    g.fillStyle = s.color;
+    g.beginPath(); g.ellipse(hx + S * 0.12, hy, S * 0.34, S * 0.26, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = shade(s.color, 0.3); g.lineWidth = Math.max(1, S * 0.03); g.lineCap = "round";
+    g.beginPath(); g.moveTo(hx + S * 0.4, hy + S * 0.12);
+    g.quadraticCurveTo(hx + S * 0.55, hy + S * 0.3, hx + S * 0.45, hy + S * 0.45); g.stroke();
+    // glow spots trailing the body
+    g.fillStyle = s.glow || "#6fd6ff";
+    for (let i = 1; i < N; i += 2) {
+      const u = i / N;
+      g.globalAlpha *= 0.9;
+      g.beginPath(); g.arc(pts[i][0], pts[i][1], S * 0.045 * (1 - u * 0.5), 0, Math.PI * 2); g.fill();
+      g.globalAlpha /= 0.9;
+    }
+    // the eye that has seen everything
+    g.fillStyle = s.glow || "#6fd6ff";
+    g.beginPath(); g.arc(hx + S * 0.24, hy - S * 0.08, S * 0.08, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#010409";
+    g.beginPath(); g.arc(hx + S * 0.26, hy - S * 0.08, S * 0.04, 0, Math.PI * 2); g.fill();
+  }
+  function drawPuffer(g, s, wob) {
+    const S = s.size, puff = 1 + Math.max(0, Math.sin(wob * 0.7)) * 0.15, R = S * 0.66 * puff;
+    // triangular spikes all around
+    g.fillStyle = shade(s.color, -0.25);
+    for (let i = 0; i < 12; i++) {
+      const a = i / 12 * Math.PI * 2 + 0.26;
+      const cx2 = Math.cos(a) * R * 0.95, cy2 = Math.sin(a) * R * 0.87;
+      const nx = Math.cos(a), ny = Math.sin(a), px2 = -ny, py2 = nx;
+      g.beginPath();
+      g.moveTo(cx2 + px2 * S * 0.07, cy2 + py2 * S * 0.07);
+      g.lineTo(cx2 + nx * S * 0.2, cy2 + ny * S * 0.2);
+      g.lineTo(cx2 - px2 * S * 0.07, cy2 - py2 * S * 0.07);
+      g.closePath(); g.fill();
+    }
+    // balloon body
+    const bg2 = g.createRadialGradient(-S * 0.15, -S * 0.2, S * 0.1, 0, 0, R * 1.12);
+    bg2.addColorStop(0, shade(s.color, 0.35)); bg2.addColorStop(1, s.color);
+    g.fillStyle = bg2; g.beginPath(); g.ellipse(0, 0, R, R * 0.92, 0, 0, Math.PI * 2); g.fill();
+    // white belly
+    g.fillStyle = "rgba(255,252,240,.85)";
+    g.beginPath(); g.ellipse(S * 0.05, R * 0.48, R * 0.6, R * 0.36, 0, 0, Math.PI * 2); g.fill();
+    // tiny flappy tail and top fin
+    g.fillStyle = shade(s.color, -0.2);
+    g.beginPath(); g.ellipse(-R - S * 0.08, 0, S * 0.16, S * 0.12, Math.sin(wob) * 0.6, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(0, -R * 0.55, S * 0.13, S * 0.08, Math.sin(wob * 1.3) * 0.5 - 0.4, 0, Math.PI * 2); g.fill();
+    // big cartoon eyes, pucker mouth, blush
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(S * 0.3, -S * 0.16, S * 0.17, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#122029"; g.beginPath(); g.arc(S * 0.34, -S * 0.16, S * 0.09, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(S * 0.3, -S * 0.22, S * 0.04, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(20,32,41,.55)"; g.lineWidth = Math.max(1, S * 0.05);
+    g.beginPath(); g.arc(S * 0.56, S * 0.06, S * 0.06, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = "rgba(255,130,150,.35)"; g.beginPath(); g.arc(S * 0.2, S * 0.16, S * 0.1, 0, Math.PI * 2); g.fill();
+  }
+  function drawAngler(g, s, wob) {
+    const S = s.size, dark = shade(s.color, -0.2);
+    // the lamp: a stalk arching forward with a glowing bulb
+    const bx = S * 0.6, by = -S * 0.8;
+    const gl = g.createRadialGradient(bx, by, 1, bx, by, S * 0.75);
+    gl.addColorStop(0, (s.glow || "#ffd66b") + "cc"); gl.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = gl; g.beginPath(); g.arc(bx, by, S * 0.75, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = dark; g.lineWidth = Math.max(1, S * 0.05); g.lineCap = "round";
+    g.beginPath(); g.moveTo(S * 0.08, -S * 0.42); g.quadraticCurveTo(S * 0.0, -S * 0.95, bx, by); g.stroke();
+    g.fillStyle = s.glow || "#ffd66b"; g.beginPath(); g.arc(bx, by, S * 0.1, 0, Math.PI * 2); g.fill();
+    // stubby tapering tail
+    g.fillStyle = dark;
+    g.beginPath(); g.moveTo(-S * 0.5, 0);
+    g.quadraticCurveTo(-S * 0.95, -S * 0.28, -S * 1.05, 0);
+    g.quadraticCurveTo(-S * 0.95, S * 0.28, -S * 0.5, 0); g.fill();
+    // big round head-body
+    const bg2 = g.createLinearGradient(0, -S * 0.55, 0, S * 0.55);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(1, shade(s.color, 0.25));
+    g.fillStyle = bg2;
+    g.beginPath(); g.ellipse(0, 0, S * 0.72, S * 0.55, 0, 0, Math.PI * 2); g.fill();
+    // huge underbite jaw with needle teeth
+    g.fillStyle = shade(s.color, 0.15);
+    g.beginPath(); g.moveTo(S * 0.68, S * 0.02);
+    g.quadraticCurveTo(S * 0.2, S * 0.52, -S * 0.25, S * 0.36);
+    g.quadraticCurveTo(S * 0.15, S * 0.62, S * 0.56, S * 0.26); g.closePath(); g.fill();
+    g.fillStyle = "#f2f6f8";
+    for (const [tx2, ty2] of [[0.52, 0.08], [0.34, 0.15], [0.16, 0.2]]) {
+      g.beginPath(); g.moveTo(S * tx2, S * ty2);
+      g.lineTo(S * (tx2 - 0.05), S * (ty2 + 0.15)); g.lineTo(S * (tx2 - 0.1), S * ty2);
+      g.closePath(); g.fill();
+    }
+    // small mean eye
+    g.fillStyle = "#eef4f8"; g.beginPath(); g.arc(S * 0.3, -S * 0.18, S * 0.09, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#0a1218"; g.beginPath(); g.arc(S * 0.33, -S * 0.18, S * 0.05, 0, Math.PI * 2); g.fill();
+  }
+  function drawGoldfish(g, s, wob) {
+    const S = s.size, v = s.gf, sway = Math.sin(wob) * 0.35;
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.5);
+      gl.addColorStop(0, s.glow + "66"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.5, 0, Math.PI * 2); g.fill();
+    }
+    const dark = shade(s.color, -0.2), light = shade(s.color, 0.45);
+    // double fan tail, swaying (the fantail wears it biggest)
+    const tl = v === "fantail" ? 1.35 : 1.0;
+    g.fillStyle = shade(s.color, 0.2); g.globalAlpha *= 0.9;
+    for (const dY of [-1, 1]) {
+      g.beginPath(); g.moveTo(-S * 0.45, 0);
+      g.quadraticCurveTo(-S * (0.95 + 0.2 * tl), dY * S * 0.55 * tl + sway * S * 0.2, -S * 1.15 * tl, dY * S * 0.3 * tl + sway * S * 0.25);
+      g.quadraticCurveTo(-S * 0.85, dY * S * 0.08, -S * 0.45, 0); g.fill();
+    }
+    g.globalAlpha /= 0.9;
+    // chubby round body
+    const bg2 = g.createLinearGradient(0, -S * 0.55, 0, S * 0.6);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(1, light);
+    g.fillStyle = bg2;
+    g.beginPath(); g.ellipse(0, S * 0.04, S * 0.62, S * 0.52, 0, 0, Math.PI * 2); g.fill();
+    if (v !== "ranchu") { // the ranchu famously has no dorsal
+      g.fillStyle = dark;
+      g.beginPath(); g.moveTo(S * 0.15, -S * 0.42); g.quadraticCurveTo(-S * 0.05, -S * 0.75, -S * 0.3, -S * 0.4); g.closePath(); g.fill();
+    }
+    g.fillStyle = dark;
+    g.beginPath(); g.ellipse(S * 0.05, S * 0.3, S * 0.14, S * 0.09, 0.6 + Math.sin(wob) * 0.3, 0, Math.PI * 2); g.fill();
+    if (v === "bubbleye") { // the cheek sacs
+      g.fillStyle = "rgba(255,220,230,.6)";
+      g.beginPath(); g.arc(S * 0.42, S * 0.24, S * 0.2, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(S * 0.14, S * 0.32, S * 0.16, 0, Math.PI * 2); g.fill();
+    }
+    // face — the celestial's eyes gaze upward forever
+    const ey = v === "celest" ? -S * 0.3 : -S * 0.08, ex = S * 0.38;
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(ex, ey, S * 0.13, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#122029";
+    g.beginPath(); g.arc(ex + (v === "celest" ? 0 : S * 0.03), ey - (v === "celest" ? S * 0.05 : 0), S * 0.07, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(255,130,150,.35)"; g.beginPath(); g.arc(S * 0.26, S * 0.16, S * 0.09, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = "rgba(20,32,41,.5)"; g.lineWidth = Math.max(1, S * 0.045);
+    g.beginPath(); g.arc(S * 0.52, S * 0.05, S * 0.09, 0.4, 2.3); g.stroke();
+  }
+  function drawKoi(g, s, wob) {
+    const S = s.size, flow = s.flow, sway = Math.sin(wob) * S * 0.12;
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.6);
+      gl.addColorStop(0, s.glow + "66"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.6, 0, Math.PI * 2); g.fill();
+    }
+    const finC = shade(s.color, -0.12), gold = s.id === "koi";
+    // flowing ribbon tail — the butterfly koi trails silk
+    const L = flow ? 1.5 : 0.9;
+    g.fillStyle = flow ? "rgba(240,150,90,.55)" : finC; g.globalAlpha *= 0.85;
+    g.beginPath(); g.moveTo(-S * 0.55, 0);
+    g.quadraticCurveTo(-S * 0.9 * L, -S * 0.42 + sway, -S * 1.3 * L, sway * 2);
+    g.quadraticCurveTo(-S * 0.9 * L, S * 0.42 + sway, -S * 0.55, 0); g.fill();
+    g.globalAlpha /= 0.85;
+    // sleek long body
+    const bg2 = g.createLinearGradient(0, -S * 0.45, 0, S * 0.5);
+    if (gold) { bg2.addColorStop(0, s.color); bg2.addColorStop(1, shade(s.color, 0.4)); }
+    else { bg2.addColorStop(0, "#f8f4ec"); bg2.addColorStop(1, "#ece2d0"); }
+    g.fillStyle = bg2;
+    g.beginPath(); g.ellipse(0, 0, S * 0.85, S * 0.42, 0, 0, Math.PI * 2); g.fill();
+    // koi blotches
+    g.save(); g.beginPath(); g.ellipse(0, 0, S * 0.85, S * 0.42, 0, 0, Math.PI * 2); g.clip();
+    g.fillStyle = gold ? "rgba(255,255,255,.45)" : "#f08a3c";
+    g.beginPath(); g.ellipse(S * 0.35, -S * 0.14, S * 0.3, S * 0.22, 0.3, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(-S * 0.3, S * 0.12, S * 0.26, S * 0.2, -0.2, 0, Math.PI * 2); g.fill();
+    if (!gold) { g.fillStyle = "#33333a"; g.beginPath(); g.ellipse(S * 0.0, -S * 0.32, S * 0.13, S * 0.08, 0, 0, Math.PI * 2); g.fill(); }
+    g.restore();
+    // flowing pectoral
+    g.fillStyle = flow ? "rgba(240,150,90,.5)" : finC; g.globalAlpha *= 0.85;
+    g.beginPath(); g.moveTo(S * 0.15, S * 0.18);
+    g.quadraticCurveTo(-S * 0.1, S * (0.55 + (flow ? 0.2 : 0)), -S * (flow ? 0.5 : 0.3), S * 0.4);
+    g.quadraticCurveTo(-S * 0.05, S * 0.28, S * 0.15, S * 0.18); g.fill();
+    g.globalAlpha /= 0.85;
+    // barbels at the mouth
+    g.strokeStyle = "rgba(70,58,45,.6)"; g.lineWidth = Math.max(1, S * 0.03); g.lineCap = "round";
+    g.beginPath(); g.moveTo(S * 0.8, S * 0.12); g.quadraticCurveTo(S * 0.9, S * 0.3, S * 0.82, S * 0.38); g.stroke();
+    // cute face
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(S * 0.58, -S * 0.1, S * 0.11, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#122029"; g.beginPath(); g.arc(S * 0.61, -S * 0.1, S * 0.06, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "rgba(255,130,150,.3)"; g.beginPath(); g.arc(S * 0.44, S * 0.12, S * 0.08, 0, Math.PI * 2); g.fill();
+  }
+  function drawTuna(g, s, wob) {
+    const S = s.size, tw = Math.sin(wob) * S * 0.12, dark = shade(s.color, -0.3);
+    // tall crescent tail
+    g.fillStyle = dark;
+    g.beginPath(); g.moveTo(-S * 0.8, tw * 0.5);
+    g.quadraticCurveTo(-S * 1.2, tw - S * 0.58, -S * 1.05, tw - S * 0.62);
+    g.lineTo(-S * 0.9, tw); g.lineTo(-S * 1.05, tw + S * 0.62);
+    g.quadraticCurveTo(-S * 1.2, tw + S * 0.58, -S * 0.8, tw * 0.5); g.fill();
+    // torpedo: dark back over silver belly
+    const bg2 = g.createLinearGradient(0, -S * 0.42, 0, S * 0.42);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(0.52, shade(s.color, 0.2));
+    bg2.addColorStop(0.58, "#dbe6ec"); bg2.addColorStop(1, "#c2d0d8");
+    g.fillStyle = bg2;
+    g.beginPath(); g.moveTo(S * 1.0, 0);
+    g.quadraticCurveTo(S * 0.4, -S * 0.44, -S * 0.4, -S * 0.32);
+    g.quadraticCurveTo(-S * 0.85, -S * 0.12, -S * 0.9, tw * 0.4);
+    g.quadraticCurveTo(-S * 0.85, S * 0.12, -S * 0.4, S * 0.32);
+    g.quadraticCurveTo(S * 0.4, S * 0.44, S * 1.0, 0); g.fill();
+    if (s.bill) { // the swordsman
+      g.fillStyle = shade(s.color, -0.35);
+      g.beginPath(); g.moveTo(S * 0.95, -S * 0.05); g.lineTo(S * 1.75, -S * 0.14); g.lineTo(S * 0.98, S * 0.03); g.closePath(); g.fill();
+    }
+    // the yellow finlets
+    g.fillStyle = "#ffd34e";
+    for (let i = 0; i < 4; i++) {
+      const px = -S * (0.32 + i * 0.15);
+      g.beginPath(); g.moveTo(px, -S * (0.3 - i * 0.045)); g.lineTo(px - S * 0.06, -S * (0.42 - i * 0.045)); g.lineTo(px - S * 0.1, -S * (0.28 - i * 0.045)); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(px, S * (0.3 - i * 0.045)); g.lineTo(px - S * 0.06, S * (0.42 - i * 0.045)); g.lineTo(px - S * 0.1, S * (0.28 - i * 0.045)); g.closePath(); g.fill();
+    }
+    // sickle dorsal + pectoral
+    g.fillStyle = dark;
+    g.beginPath(); g.moveTo(S * 0.25, -S * 0.36); g.quadraticCurveTo(S * 0.1, -S * 0.74, -S * 0.1, -S * 0.34); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(S * 0.3, S * 0.1); g.quadraticCurveTo(S * 0.0, S * 0.46, -S * 0.16, S * 0.28); g.closePath(); g.fill();
+    // eye
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(S * 0.68, -S * 0.08, S * 0.1, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#0e1a24"; g.beginPath(); g.arc(S * 0.71, -S * 0.08, S * 0.055, 0, Math.PI * 2); g.fill();
+  }
+  function drawCoel(g, s, wob) {
+    const S = s.size, tw = Math.sin(wob) * S * 0.1, dark = shade(s.color, -0.25), lobe = shade(s.color, -0.1);
+    // three-lobed tail: the living fossil signature
+    g.fillStyle = lobe;
+    g.beginPath(); g.moveTo(-S * 0.75, tw * 0.6);
+    g.quadraticCurveTo(-S * 1.1, tw - S * 0.36, -S * 1.25, tw - S * 0.16);
+    g.quadraticCurveTo(-S * 1.05, tw, -S * 1.25, tw + S * 0.16);
+    g.quadraticCurveTo(-S * 1.1, tw + S * 0.36, -S * 0.75, tw * 0.6); g.fill();
+    g.fillStyle = dark; g.beginPath(); g.ellipse(-S * 1.14, tw, S * 0.18, S * 0.08, 0, 0, Math.PI * 2); g.fill();
+    // heavy plated body
+    const bg2 = g.createLinearGradient(0, -S * 0.5, 0, S * 0.5);
+    bg2.addColorStop(0, s.color); bg2.addColorStop(1, shade(s.color, 0.25));
+    g.fillStyle = bg2;
+    g.beginPath(); g.moveTo(S * 0.9, S * 0.02);
+    g.quadraticCurveTo(S * 0.5, -S * 0.48, -S * 0.2, -S * 0.42);
+    g.quadraticCurveTo(-S * 0.75, -S * 0.25, -S * 0.8, tw * 0.5);
+    g.quadraticCurveTo(-S * 0.75, S * 0.3, -S * 0.2, S * 0.42);
+    g.quadraticCurveTo(S * 0.5, S * 0.48, S * 0.9, S * 0.02); g.fill();
+    // white flecks
+    g.fillStyle = "rgba(220,235,250,.55)";
+    for (let i = 0; i < 9; i++) {
+      const px = (((i * 47) % 83) / 83 - 0.45) * S * 1.3, py = (((i * 29) % 61) / 61 - 0.5) * S * 0.7;
+      g.beginPath(); g.arc(px, py, S * 0.045, 0, Math.PI * 2); g.fill();
+    }
+    // lobed paddle fins on little stalks
+    g.fillStyle = lobe;
+    for (const [px, py, a] of [[0.15, -0.48, -0.5], [-0.35, -0.42, -0.3], [0.2, 0.42, 0.6], [-0.25, 0.42, 0.4]]) {
+      g.save(); g.translate(S * px, S * py); g.rotate(a + Math.sin(wob + px * 5) * 0.15);
+      g.beginPath(); g.ellipse(0, S * 0.12, S * 0.1, S * 0.2, 0, 0, Math.PI * 2); g.fill(); g.restore();
+    }
+    // ancient armored eye
+    g.fillStyle = s.glow || "#cfe0f5"; g.beginPath(); g.arc(S * 0.6, -S * 0.12, S * 0.1, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#06090f"; g.beginPath(); g.arc(S * 0.63, -S * 0.12, S * 0.055, 0, Math.PI * 2); g.fill();
+  }
+  function drawEel(g, s, wob) {
+    const S = s.size;
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.5);
+      gl.addColorStop(0, s.glow + "55"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.5, 0, Math.PI * 2); g.fill();
+    }
+    const N = 8, pts = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N;
+      pts.push([S * (0.85 - u * 1.9), Math.sin(wob * 1.3 + u * 4.6) * S * 0.2 * (0.25 + u)]);
+    }
+    const wid = u => S * (0.14 * Math.pow(1 - u, 0.5) + 0.015);
+    // ribbon dorsal fin along the whole spine
+    g.fillStyle = shade(s.color, 0.3); g.globalAlpha *= 0.75;
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 0; i <= N; i++) g.lineTo(pts[i][0], pts[i][1] - wid(i / N) - S * 0.1 * Math.sin(wob * 2 + i));
+    for (let i = N; i >= 0; i--) g.lineTo(pts[i][0], pts[i][1]);
+    g.closePath(); g.fill(); g.globalAlpha /= 0.75;
+    // body ribbon
+    g.fillStyle = s.color;
+    g.beginPath(); g.moveTo(pts[0][0], pts[0][1] - wid(0));
+    for (let i = 1; i <= N; i++) g.lineTo(pts[i][0], pts[i][1] - wid(i / N));
+    for (let i = N; i >= 0; i--) g.lineTo(pts[i][0], pts[i][1] + wid(i / N));
+    g.closePath(); g.fill();
+    if (s.leafy) { // the seadragon dresses as the forest
+      g.fillStyle = shade(s.color, 0.35); g.globalAlpha *= 0.85;
+      for (let i = 1; i < N; i += 2) {
+        const [px, py] = pts[i];
+        g.save(); g.translate(px, py); g.rotate(Math.sin(wob + i) * 0.4 - 0.6);
+        g.beginPath(); g.ellipse(0, -S * 0.18, S * 0.06, S * 0.18, 0, 0, Math.PI * 2); g.fill(); g.restore();
+        g.save(); g.translate(px, py); g.rotate(Math.sin(wob + i + 2) * 0.4 + 0.6);
+        g.beginPath(); g.ellipse(0, S * 0.18, S * 0.06, S * 0.16, 0, 0, Math.PI * 2); g.fill(); g.restore();
+      }
+      g.globalAlpha /= 0.85;
+    }
+    // head
+    const hx = pts[0][0], hy = pts[0][1];
+    g.fillStyle = s.color;
+    g.beginPath(); g.ellipse(hx + S * 0.1, hy, S * 0.2, S * 0.14, 0, 0, Math.PI * 2); g.fill();
+    if (s.pred) { // the moray grin
+      g.strokeStyle = "rgba(10,14,10,.65)"; g.lineWidth = Math.max(1, S * 0.035); g.lineCap = "round";
+      g.beginPath(); g.moveTo(hx + S * 0.28, hy + S * 0.05); g.quadraticCurveTo(hx + S * 0.12, hy + S * 0.12, hx - S * 0.02, hy + S * 0.09); g.stroke();
+      g.fillStyle = s.glow || "#dfe6c9";
+      g.beginPath(); g.arc(hx + S * 0.14, hy - S * 0.05, S * 0.05, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#0a0e08"; g.beginPath(); g.arc(hx + S * 0.16, hy - S * 0.05, S * 0.028, 0, Math.PI * 2); g.fill();
+    } else {
+      g.fillStyle = "#fff"; g.beginPath(); g.arc(hx + S * 0.14, hy - S * 0.04, S * 0.06, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#122029"; g.beginPath(); g.arc(hx + S * 0.16, hy - S * 0.04, S * 0.034, 0, Math.PI * 2); g.fill();
+    }
+  }
+  function drawJelly(g, s, wob) {
+    const S = s.size, pulse = Math.sin(wob * 0.8);
+    const bw = S * 0.62 * (1 + pulse * 0.07), bh = S * 0.55 * (1 - pulse * 0.06);
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.6);
+      gl.addColorStop(0, s.glow + "77"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.6, 0, Math.PI * 2); g.fill();
+    }
+    // trailing tentacles
+    g.strokeStyle = shade(s.color, 0.15); g.lineWidth = Math.max(1, S * 0.045); g.lineCap = "round";
+    g.globalAlpha *= 0.8;
+    for (let i = 0; i < 6; i++) {
+      const off = (i - 2.5) * bw * 0.3, ph = wob * 1.2 + i * 1.1;
+      g.beginPath(); g.moveTo(off * 0.8, bh * 0.35);
+      g.quadraticCurveTo(off + Math.sin(ph) * S * 0.14, bh * 0.9, off * 1.2 + Math.cos(ph) * S * 0.18, bh * 1.5);
+      g.stroke();
+    }
+    g.globalAlpha /= 0.8;
+    // the bell
+    const bg2 = g.createRadialGradient(0, -bh * 0.3, 2, 0, 0, bw * 1.1);
+    bg2.addColorStop(0, shade(s.color, 0.5)); bg2.addColorStop(1, s.color);
+    g.fillStyle = bg2; g.globalAlpha *= 0.92;
+    g.beginPath();
+    g.moveTo(-bw, bh * 0.28);
+    g.quadraticCurveTo(-bw * 1.05, -bh * 0.8, 0, -bh);
+    g.quadraticCurveTo(bw * 1.05, -bh * 0.8, bw, bh * 0.28);
+    g.quadraticCurveTo(bw * 0.5, bh * 0.42, 0, bh * 0.3);
+    g.quadraticCurveTo(-bw * 0.5, bh * 0.42, -bw, bh * 0.28);
+    g.fill(); g.globalAlpha /= 0.92;
+    // inner light
+    g.fillStyle = s.glow || "#fff"; g.globalAlpha *= 0.5;
+    g.beginPath(); g.ellipse(0, -bh * 0.3, bw * 0.4, bh * 0.32, 0, 0, Math.PI * 2); g.fill();
+    g.globalAlpha /= 0.5;
+    // two tiny kind eyes
+    g.fillStyle = "rgba(20,32,41,.7)";
+    g.beginPath(); g.arc(-bw * 0.22, -bh * 0.1, S * 0.045, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(bw * 0.22, -bh * 0.1, S * 0.045, 0, Math.PI * 2); g.fill();
+  }
+  const BODY_DRAW = { shark: drawShark, ray: drawRay, squid: drawSquidBody, whale: drawWhale, dunk: drawDunk, serpent: drawSerpent, puffer: drawPuffer, angler: drawAngler, goldfish: drawGoldfish, koi: drawKoi, tuna: drawTuna, coel: drawCoel, eel: drawEel, jelly: drawJelly };
+
+  function drawFish(g, f, dim) {
+    const s = f.s, dir = f.vx >= 0 ? 1 : -1, bob = Math.sin(f.wob) * 3, S = s.size;
+    g.save();
+    g.translate(f.x, f.y + bob); g.scale(dir, 1); g.globalAlpha = dim;
+
+    if (BODY_DRAW[s.body]) {
+      // signature species draw themselves
+      if (f.prowl) { // locked onto your catch: a red hunger about them
+        const rg = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.5);
+        rg.addColorStop(0, "rgba(255,60,60,.22)"); rg.addColorStop(1, "rgba(255,60,60,0)");
+        g.fillStyle = rg; g.beginPath(); g.arc(0, 0, S * 1.5, 0, Math.PI * 2); g.fill();
+      }
+      BODY_DRAW[s.body](g, s, f.wob);
+      g.restore();
+      if (f.prowl) {
+        g.save(); g.globalAlpha = dim;
+        g.fillStyle = "#ff5a5a"; g.font = "800 " + Math.max(12, S * 0.5) + "px " + FONT(); g.textAlign = "center";
+        g.fillText("!", f.x, f.y - S * 0.95);
+        g.textAlign = "left"; g.restore();
+      }
+      return;
+    }
+
+    if (s.glow) {
+      const gl = g.createRadialGradient(0, 0, 2, 0, 0, S * 1.8);
+      gl.addColorStop(0, s.glow + "bb"); gl.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = gl; g.beginPath(); g.arc(0, 0, S * 1.8, 0, Math.PI * 2); g.fill();
+    }
+
+    const darker = shade(s.color, -0.25), lighter = shade(s.color, 0.45);
+    // tail (split fin)
+    g.fillStyle = darker;
+    g.beginPath();
+    g.moveTo(-S * 0.65, 0);
+    g.quadraticCurveTo(-S * 1.25, -S * 0.6, -S * 1.15, -S * 0.15);
+    g.lineTo(-S * 0.9, 0);
+    g.lineTo(-S * 1.15, S * 0.15);
+    g.quadraticCurveTo(-S * 1.25, S * 0.6, -S * 0.65, 0);
+    g.fill();
+    // dorsal fin
+    g.fillStyle = darker;
+    g.beginPath();
+    g.moveTo(-S * 0.1, -S * 0.55);
+    g.quadraticCurveTo(S * 0.15, -S * 0.95, S * 0.35, -S * 0.5);
+    g.closePath(); g.fill();
+    // body (gradient)
+    const bg = g.createLinearGradient(0, -S * 0.7, 0, S * 0.7);
+    bg.addColorStop(0, s.color); bg.addColorStop(1, lighter);
+    g.fillStyle = bg;
+    g.beginPath(); g.ellipse(0, 0, S, S * 0.64, 0, 0, Math.PI * 2); g.fill();
+    // species markings — know your fish before you hook it
+    if (s.pattern) {
+      g.save();
+      g.beginPath(); g.ellipse(0, 0, S, S * 0.64, 0, 0, Math.PI * 2); g.clip();
+      if (s.pattern === "clown") {
+        g.fillStyle = "#f7f9fb"; g.strokeStyle = "rgba(20,25,30,.7)"; g.lineWidth = Math.max(1, S * 0.045);
+        for (const bx of [0.45, -0.08, -0.58]) {
+          g.beginPath();
+          g.moveTo(S * bx + S * 0.13, -S * 0.7); g.quadraticCurveTo(S * bx - S * 0.05, 0, S * bx + S * 0.13, S * 0.7);
+          g.lineTo(S * bx - S * 0.13, S * 0.7); g.quadraticCurveTo(S * bx - S * 0.31, 0, S * bx - S * 0.13, -S * 0.7);
+          g.closePath(); g.fill(); g.stroke();
+        }
+      } else if (s.pattern === "tiger") {
+        g.strokeStyle = "rgba(20,45,50,.55)"; g.lineWidth = Math.max(1, S * 0.06); g.lineCap = "round";
+        for (let i = 0; i < 5; i++) {
+          const px = S * (0.55 - i * 0.28);
+          g.beginPath(); g.moveTo(px, -S * 0.62); g.quadraticCurveTo(px - S * 0.12, -S * 0.2, px, S * 0.05); g.stroke();
+        }
+      } else if (s.pattern === "stripe") {
+        g.strokeStyle = "rgba(30,45,30,.55)"; g.lineWidth = Math.max(1.5, S * 0.13); g.lineCap = "round";
+        g.beginPath(); g.moveTo(-S * 0.85, 0); g.lineTo(S * 0.8, 0); g.stroke();
+      } else if (s.pattern === "lateral") {
+        g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = Math.max(1, S * 0.05);
+        g.beginPath(); g.moveTo(-S * 0.85, S * 0.02); g.lineTo(S * 0.85, S * 0.02); g.stroke();
+      } else if (s.pattern === "dots") {
+        g.fillStyle = "rgba(30,45,60,.6)";
+        for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(S * (0.5 - i * 0.25), -S * 0.15, S * 0.05, 0, Math.PI * 2); g.fill(); }
+      } else if (s.pattern === "photo") {
+        g.fillStyle = s.glow || "#9ffff3";
+        for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(S * (0.55 - i * 0.22), S * 0.3, S * 0.055, 0, Math.PI * 2); g.fill(); }
+      }
+      g.restore();
+    }
+    // pectoral fin
+    g.fillStyle = darker; g.globalAlpha = dim * 0.9;
+    g.beginPath();
+    g.moveTo(S * 0.05, S * 0.15);
+    g.quadraticCurveTo(-S * 0.15, S * 0.6, S * 0.35, S * 0.35);
+    g.closePath(); g.fill();
+    g.globalAlpha = dim;
+    // eye
+    if (s.danger) {
+      // ancient things do not blush: narrow glowing eye, no smile
+      g.fillStyle = s.glow || "#c9d6e8";
+      g.beginPath(); g.arc(S * 0.52, -S * 0.14, S * 0.11, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#05070c";
+      g.beginPath(); g.arc(S * 0.55, -S * 0.14, S * 0.055, 0, Math.PI * 2); g.fill();
+    } else {
+      g.fillStyle = "#fff";
+      g.beginPath(); g.arc(S * 0.52, -S * 0.14, S * 0.19, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#122029";
+      g.beginPath(); g.arc(S * 0.57, -S * 0.14, S * 0.1, 0, Math.PI * 2); g.fill();
+      g.fillStyle = "#fff";
+      g.beginPath(); g.arc(S * 0.52, -S * 0.2, S * 0.04, 0, Math.PI * 2); g.fill();
+      // cheek blush + a little smile (cuteness)
+      g.fillStyle = "rgba(255,130,150,.35)";
+      g.beginPath(); g.arc(S * 0.32, S * 0.15, S * 0.13, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = "rgba(20,32,41,.5)"; g.lineWidth = Math.max(1, S * 0.055); g.lineCap = "round";
+      g.beginPath(); g.arc(S * 0.72, -S * 0.03, S * 0.15, Math.PI * 0.15, Math.PI * 0.72); g.stroke();
+    }
+    g.restore();
+  }
+
+  function drawBoat() {
+    const sY = surfaceY(), bx = hook.x;
+    // lantern glow (behind)
+    const lx = bx - 30, ly = sY - 30;
+    const lg = ctx.createRadialGradient(lx, ly, 3, lx, ly, 46);
+    lg.addColorStop(0, "rgba(255,206,120,.7)"); lg.addColorStop(1, "rgba(255,206,120,0)");
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly, 46, 0, Math.PI * 2); ctx.fill();
+
+    // hull
+    const wood = ctx.createLinearGradient(0, sY - 18, 0, sY + 6);
+    wood.addColorStop(0, "#9a6338"); wood.addColorStop(1, "#5e3a20");
+    ctx.fillStyle = wood;
+    ctx.beginPath();
+    ctx.moveTo(bx - 36, sY - 12);
+    ctx.quadraticCurveTo(bx, sY + 12, bx + 36, sY - 12);
+    ctx.lineTo(bx + 30, sY - 18);
+    ctx.lineTo(bx - 30, sY - 18);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "rgba(255,225,190,.35)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx - 30, sY - 14); ctx.lineTo(bx + 30, sY - 14); ctx.stroke();
+
+    // lantern post + lantern
+    ctx.strokeStyle = "#2e2016"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(lx, sY - 16); ctx.lineTo(lx, ly + 4); ctx.stroke();
+    ctx.fillStyle = "#ffd98a"; roundRect(lx - 5, ly - 6, 10, 13, 3); ctx.fill();
+    ctx.strokeStyle = "#7a4a1e"; ctx.lineWidth = 1.4; ctx.stroke();
+
+    // fisherman
+    const fx = bx + 4;
+    ctx.fillStyle = "#c85a4a"; // sweater
+    ctx.beginPath(); ctx.ellipse(fx, sY - 26, 9, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#e8b892"; // head
+    ctx.beginPath(); ctx.arc(fx, sY - 40, 6.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#35507e"; // beanie
+    ctx.beginPath(); ctx.arc(fx, sY - 42, 6.8, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.fillRect(fx - 6.8, sY - 42, 13.6, 2.5);
+
+    // rod + line
+    const tipX = bx + 34, tipY = sY - 46;
+    ctx.strokeStyle = "#3a2414"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(fx + 5, sY - 30); ctx.lineTo(tipX, tipY); ctx.stroke();
+    ctx.strokeStyle = "rgba(240,248,255,.5)"; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.moveTo(tipX, tipY);
+    ctx.quadraticCurveTo((tipX + hook.x) / 2, (tipY + hook.y) / 2 + 6, hook.x, hook.y);
+    ctx.stroke();
+
+    // hook
+    ctx.strokeStyle = "#e9f4ff"; ctx.lineWidth = 2.2; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.arc(hook.x, hook.y, 6, Math.PI * 0.1, Math.PI * 1.5); ctx.stroke();
+    ctx.fillStyle = "#e9f4ff";
+    ctx.beginPath(); ctx.arc(hook.x - 4.5, hook.y + 4, 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+
+  const bubbles = Array.from({ length: 26 }, () => ({ x: rand(0,400), y: rand(0,800), r: rand(1.5,4), v: rand(12,34), sway: rand(0,6) }));
+  const TANK_HEARTS = Array.from({ length: 5 }, () => ({ fx: rand(0.15,0.85), y: rand(0,1), v: rand(0.05,0.12), s: rand(6,11), ph: rand(0,6.28) }));
+
+  function drawRoom(dt) {
+    const vault = state.tank === 2; // the Leviathan Vault is dark glass
+    const wall = ctx.createLinearGradient(0, 0, 0, H);
+    wall.addColorStop(0, "#3a3050"); wall.addColorStop(1, "#241d34");
+    ctx.fillStyle = wall; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#3a2a1e"; ctx.fillRect(0, H * 0.82, W, H * 0.18);
+
+    const pad = Math.min(W, H) * 0.06, tx = pad, ty = H * 0.14, tw = W - pad * 2, th = H * 0.66;
+    ctx.fillStyle = "#241a12"; ctx.fillRect(tx + 6, ty + th, tw - 12, H * 0.06);
+
+    const wg = ctx.createLinearGradient(0, ty, 0, ty + th);
+    if (vault) { wg.addColorStop(0, "#16344e"); wg.addColorStop(1, "#04121f"); }
+    else { wg.addColorStop(0, "#2fa3cf"); wg.addColorStop(1, "#0d5379"); }
+    ctx.fillStyle = wg; roundRect(tx, ty, tw, th, 10); ctx.fill();
+
+    ctx.save(); roundRect(tx, ty, tw, th, 10); ctx.clip();
+    // gravel
+    ctx.fillStyle = "#c9a86a";
+    ctx.beginPath(); ctx.moveTo(tx, ty + th);
+    for (let x = tx; x <= tx + tw; x += 14) ctx.lineTo(x, ty + th - 12 - Math.sin(x * 0.3) * 4);
+    ctx.lineTo(tx + tw, ty + th); ctx.closePath(); ctx.fill();
+    drawTankDecor(tx, ty, tw, th);
+    // plants
+    ctx.strokeStyle = "#3fae5a"; ctx.lineWidth = 6; ctx.lineCap = "round";
+    for (const px of [tx + tw * 0.15, tx + tw * 0.85, tx + tw * 0.5]) {
+      ctx.beginPath(); ctx.moveTo(px, ty + th - 8);
+      ctx.quadraticCurveTo(px + Math.sin(px + T) * 14, ty + th - 50, px + Math.sin(T) * 8, ty + th - 94);
+      ctx.stroke();
+    }
+    // swimmers
+    for (const f of tank) {
+      f.wob += dt * 3; f.x += f.vx * dt;
+      const left = tx + 30, right = tx + tw - 30;
+      if (f.x < left) { f.x = left; f.vx *= -1; }
+      if (f.x > right) { f.x = right; f.vx *= -1; }
+      drawFish(ctx, { s: f.s, x: f.x, y: ty + 30 + f.y * (th - 70), vx: f.vx, wob: f.wob }, 1);
+    }
+    // bubbles
+    for (const b of bubbles) {
+      b.y -= b.v * dt;
+      if (b.y < ty + 8) { b.y = ty + th - 8; b.x = rand(tx + 10, tx + tw - 10); }
+      ctx.fillStyle = "rgba(255,255,255,.28)";
+      ctx.beginPath(); ctx.arc(b.x + Math.sin(b.y * .05) * b.sway, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    }
+    // floating hearts (cuteness — the vault keeps a solemn dark instead)
+    if (!vault) for (const ht of TANK_HEARTS) {
+      ht.y -= ht.v * dt;
+      if (ht.y < 0) ht.y = 1;
+      const hx = tx + ht.fx * tw + Math.sin(T * 1.5 + ht.ph) * 8;
+      const hy = ty + 20 + ht.y * (th - 40);
+      drawHeart(hx, hy, ht.s, 0.45 + 0.3 * Math.sin(T * 3 + ht.ph));
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 2; roundRect(tx, ty, tw, th, 10); ctx.stroke();
+
+    const kinds = Object.keys(state.collection).length;
+    const total = Object.values(state.collection).reduce((a, b) => a + b, 0);
+    const locked = Object.keys(state.collection).filter(id => byId[id] && !tankAllows(byId[id])).length;
+    ctx.fillStyle = "#f3ece0"; ctx.textAlign = "center"; ctx.font = "800 20px " + FONT();
+    ctx.fillText(TANKS[state.tank].name, W / 2, ty + th + H * 0.115);
+    ctx.fillStyle = "#c3b49c"; ctx.font = "600 12px " + FONT();
+    ctx.fillText(kinds + " of " + SPECIES.length + " species  ·  " + total + " fish kept"
+      + (locked ? "  ·  🔒 " + locked + " need a bigger tank" : ""), W / 2, ty + th + H * 0.145);
+    if (kinds === 0) {
+      ctx.fillStyle = "rgba(243,236,224,.6)"; ctx.font = "600 14px " + FONT();
+      ctx.fillText("Every new species you catch swims home to here!", W / 2, ty + th / 2);
+    }
+    ctx.textAlign = "left";
+  }
+
+  function roundRect(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function shade(hex, amt) {
+    const n = parseInt(hex.slice(1), 16);
+    let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const t = amt < 0 ? 0 : 255, p = Math.abs(amt);
+    r = Math.round((t - r) * p + r); g = Math.round((t - g) * p + g); b = Math.round((t - b) * p + b);
+    return "rgb(" + r + "," + g + "," + b + ")";
+  }
+  function drawHeart(x, y, s, alpha) {
+    ctx.save(); ctx.globalAlpha = Math.max(0, alpha); ctx.fillStyle = "#ff8fb0";
+    ctx.beginPath();
+    ctx.moveTo(x, y + s * 0.3);
+    ctx.bezierCurveTo(x, y, x - s, y, x - s, y + s * 0.4);
+    ctx.bezierCurveTo(x - s, y + s * 0.85, x, y + s * 1.05, x, y + s * 1.35);
+    ctx.bezierCurveTo(x, y + s * 1.05, x + s, y + s * 0.85, x + s, y + s * 0.4);
+    ctx.bezierCurveTo(x + s, y, x, y, x, y + s * 0.3);
+    ctx.fill(); ctx.restore();
+  }
+  function drawTankDecor(tx, ty, tw, th) {
+    const base = ty + th - 12;
+    // treasure chest
+    const cx = tx + tw * 0.2;
+    ctx.fillStyle = "#7a4a24"; roundRect(cx - 22, base - 20, 44, 20, 4); ctx.fill();
+    ctx.fillStyle = "#9a6338"; roundRect(cx - 22, base - 31, 44, 13, 6); ctx.fill();
+    ctx.fillStyle = "#ffce4a"; ctx.fillRect(cx - 4, base - 23, 8, 11);
+    ctx.fillStyle = "#ffe08a";
+    for (const [dx, dy] of [[17, 2], [23, 1], [20, 6]]) { ctx.beginPath(); ctx.ellipse(cx + dx, base - dy, 4, 2.4, 0, 0, Math.PI * 2); ctx.fill(); }
+    // pink coral
+    const rx = tx + tw * 0.5;
+    ctx.strokeStyle = "#ff9ec4"; ctx.lineWidth = 5; ctx.lineCap = "round";
+    for (const a of [-0.5, 0, 0.5]) { ctx.beginPath(); ctx.moveTo(rx, base); ctx.quadraticCurveTo(rx + a * 30, base - 24, rx + a * 46, base - 42); ctx.stroke(); }
+    // little shell
+    const shx = tx + tw * 0.8;
+    ctx.fillStyle = "#ffd3e2"; ctx.beginPath(); ctx.arc(shx, base, 13, Math.PI, 0); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = "#f5a6c8"; ctx.lineWidth = 1.5;
+    for (const a of [-0.7, -0.25, 0.25, 0.7]) { ctx.beginPath(); ctx.moveTo(shx, base); ctx.lineTo(shx + Math.sin(a) * 13, base - Math.cos(a) * 13); ctx.stroke(); }
+  }
+
+  // ---------- loop ----------
+  let last = performance.now(), T = 0, bubbleAcc = 0;
+  function frame(now) {
+    let dt = (now - last) / 1000; last = now;
+    if (dt > 0.05) dt = 0.05;
+    T += dt;
+    ctx.clearRect(0, 0, W, H);
+
+    if (state.view === "room") { drawRoom(dt); requestAnimationFrame(frame); return; }
+
+    // camera rides the line down, then drifts home
+    const camMax = Math.max(0, surfaceY() + worldDepth() + 30 - H);
+    const camT = hook.state === "idle" ? 0 : Math.max(0, Math.min(hook.y - H * 0.55, camMax));
+    cam += (camT - cam) * Math.min(1, dt * 4.5);
+    if (Math.abs(camT - cam) < 0.5) cam = camT;
+    ctx.save(); ctx.translate(0, -Math.round(cam));
+
+    drawSky();
+    drawWater();
+
+    bubbleAcc += dt;
+    for (const b of bubbles) {
+      b.y -= b.v * dt;
+      if (b.y < surfaceY()) { b.y = surfaceY() + worldDepth(); b.x = rand(0, W); }
+      ctx.fillStyle = "rgba(255,255,255,.14)";
+      ctx.beginPath(); ctx.arc(b.x + Math.sin(b.y * .05) * b.sway, b.y, b.r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    ensureFish();
+    const reach = maxDepthY();
+    // predators: one hunter at a time — it notices (a beat you can read),
+    // then commits to a straight lunge you can dodge by steering away
+    const prey = hook.caught.length > 0 && hook.state !== "idle";
+    if (stealCd > 0) stealCd -= dt;
+    if (prowler && (prowler.caught || prowler.flee > 0 || !prowler.aggro)) prowler = null;
+    const breakOff = (f) => {
+      f.aggro = null; f.prowl = false;
+      f.flee = 2.2; f.vx = (f.x > hook.x ? 1 : -1) * Math.max(46, Math.abs(f.vx));
+      if (prowler === f) prowler = null;
+    };
+    for (const f of fish) {
+      f.wob += dt * 3.2;
+      if (f.caught) continue;
+      if (f.flee > 0) { f.flee -= dt; f.prowl = false; f.x += f.vx * dt * 3.2; continue; }
+      if (f.aggro) {
+        if (!prey) { breakOff(f); f.flee = 0.4; continue; } // haul landed — it loses interest
+        f.aggro.t += dt;
+        f.prowl = true;
+        if (f.aggro.phase === "notice") {
+          // turn toward the hook and coil — your window to move
+          f.vx = (hook.x >= f.x ? 1 : -1) * Math.max(14, Math.abs(f.vx) * 0.4);
+          f.x += f.vx * dt * 0.3;
+          if (f.aggro.t > 0.55) {
+            const dx = hook.x - f.x, dy = hook.y - f.y, d = Math.hypot(dx, dy) || 1;
+            const sp = 240 + (f.s.big || 1) * 35;
+            f.aggro = { phase: "lunge", t: 0, vx: dx / d * sp, vy: dy / d * sp };
+          }
+        } else {
+          f.x += f.aggro.vx * dt; f.y += f.aggro.vy * dt;
+          f.vx = f.aggro.vx;
+          const d = Math.hypot(hook.x - f.x, hook.y - f.y);
+          if (d < f.s.size * 0.9 + 14) {
+            const stolen = hook.caught.pop();
+            if (stolen) {
+              fish = fish.filter(x => x !== stolen);
+              floatText(hook.x, hook.y - 24, f.s.name + " stole your " + stolen.s.name + "!", "#ff6a6a");
+              Snd.blip("bite");
+              stolenThisCast = true;
+              Quests.event("stolen");
+              syncHud();
+            }
+            stealCd = 4.5;
+            breakOff(f);
+          } else if (f.aggro.t > 1.3) breakOff(f); // lunge missed — it gives up
+        }
+        continue;
+      }
+      f.prowl = false;
+      // the nervous ones bolt when the hook comes close
+      if (f.dart > 0) { f.dart -= dt; f.x += f.dvx * dt; f.y += f.dvy * dt * 0.4; f.vx = f.dvx * 0.4; continue; }
+      if (f.s.shy && hook.state !== "idle") {
+        const sdx = f.x - hook.x, sdy = f.y - hook.y;
+        if (sdx * sdx + sdy * sdy < 6400) {
+          f.dart = 0.5; f.dvx = (sdx >= 0 ? 1 : -1) * 135; f.dvy = (sdy >= 0 ? 1 : -1) * 60;
+        }
+      }
+      f.x += f.vx * dt; f.y += Math.sin(f.wob) * 0.25;
+      // acquisition: nearest calm predator inside a real hunting radius
+      if (prey && !prowler && f.s.pred && stealCd <= 0) {
+        const dx = hook.x - f.x, dy = hook.y - f.y;
+        if (dx * dx + dy * dy < 280 * 280) { prowler = f; f.aggro = { phase: "notice", t: 0 }; }
+      }
+    }
+    for (const f of fish) if (!f.caught) f.y = Math.max(surfaceY() + 10, Math.min(surfaceY() + worldDepth() - 8, f.y));
+    fish = fish.filter(f => f.x > -60 && f.x < W + 60);
+    if (prowler && !fish.includes(prowler)) prowler = null;
+
+    hook.x += (hook.tx - hook.x) * Math.min(1, dt * 10);
+    if (hook.state === "dropping") {
+      hook.y += DROP_SPEED * dt;
+      tryCatch();
+      if (hook.y >= reach || hook.caught.length >= catchLimit()) hook.state = "reeling";
+    } else if (hook.state === "reeling") {
+      hook.y -= reelSpeed() * dt;
+      tryCatch();
+      if (hook.y <= surfaceY()) { hook.y = surfaceY(); resolveCatch(); }
+    } else { hook.y = surfaceY(); }
+
+    for (const f of fish) { if (f.caught) continue; drawFish(ctx, f, f.y > reach + 4 ? 0.32 : 1); }
+    for (const f of hook.caught) { f.x = hook.x + f.ox; f.y = hook.y + f.oy; drawFish(ctx, f, 1); }
+
+    drawBoat();
+
+    for (let i = floats.length - 1; i >= 0; i--) {
+      const t = floats[i]; t.y -= dt * 34; t.life -= dt * 0.9;
+      if (t.life <= 0) { floats.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.max(0, t.life); ctx.fillStyle = t.color;
+      ctx.font = "800 15px " + FONT(); ctx.textAlign = "center";
+      ctx.fillText(t.txt, t.x, t.y); ctx.globalAlpha = 1; ctx.textAlign = "left";
+    }
+
+    ctx.restore(); // camera
+
+    requestAnimationFrame(frame);
+  }
+
+  const muteBtn = el("mute");
+  muteBtn.textContent = state.muted ? "🔇" : "🔊";
+  muteBtn.addEventListener("click", () => {
+    Snd.setMuted(!state.muted);
+    muteBtn.textContent = state.muted ? "🔇" : "🔊";
+    save();
+  });
+
+  el("quest").addEventListener("click", openNote);
+  el("note-close").addEventListener("click", () => el("note-overlay").classList.remove("open"));
+  el("note-overlay").addEventListener("click", (e) => { if (e.target === el("note-overlay")) el("note-overlay").classList.remove("open"); });
+
+  window.__dc = { SPECIES, drawFish, state }; // debug handle for tests
+  if (state._rescanQuests) { delete state._rescanQuests; Quests.rescan(); save(); }
+  syncHud(); syncBrand(); setView("fish"); Quests.check();
+  if (state.qi === 0) setTimeout(openNote, 900); // the journal falls open on a brand-new game
+  requestAnimationFrame(frame);
+})();
+</script>

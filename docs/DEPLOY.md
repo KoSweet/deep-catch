@@ -2,24 +2,13 @@
 
 The game is a single `index.html` at the repo root — no build step.
 
-## ⚠️ Private repo note
+## GitHub Pages (enabled)
 
-This repo is **private**. Free GitHub Pages only works on **public** repos (or paid GitHub plans with private Pages).
+**Live:** https://kosweet.github.io/deep-catch/
 
-**Pick one:**
+Repo is **public**. Pages deploys from `main` / root automatically on push.
 
-| Option | Steps |
-|--------|--------|
-| **A. Make repo public** (simplest) | GitHub → Settings → Danger zone → Change visibility → Public. Then enable Pages below. |
-| **B. Netlify drop** (keep private) | Zip `index.html` + `assets/` → [app.netlify.com/drop](https://app.netlify.com/drop) → use the HTTPS URL in YouTube Studio |
-| **C. Cloudflare Pages** | Connect repo or upload `index.html` + assets folder |
-
-## GitHub Pages setup (after repo is public or plan upgraded)
-
-1. Open **https://github.com/KoSweet/deep-catch/settings/pages**
-2. **Build and deployment → Source:** Deploy from a branch
-3. **Branch:** `main` · **Folder:** `/ (root)`
-4. Save — live at **https://kosweet.github.io/deep-catch/**
+To change settings: **https://github.com/KoSweet/deep-catch/settings/pages**
 
 ## Optional: GitHub Actions workflow
 

@@ -70,16 +70,19 @@ Dev cheats and test gold are **disabled** when `ytgame.IN_PLAYABLES_ENV` is true
 
 ---
 
-## Create the playable (Studio steps)
+## Create the playable (Developer Portal)
 
-1. Go to [YouTube Studio](https://studio.youtube.com) → your channel → **Playables** (or Google Playables developer portal if using that flow).
-2. **New playable** → **Custom / HTML5**.
-3. **Game URL:** `https://kosweet.github.io/deep-catch/`
-4. Upload **icon** and **preview video**.
-5. Paste **short description** above.
-6. Set score type to **High score** (integer, monotonic).
-7. Run the **embed preview** and complete [`PLAYABLES-QA.md`](PLAYABLES-QA.md) sections 1–7 in that preview (not localhost).
-8. Submit for review.
+> **Note:** YouTube Playables uses the **[Developer Portal](https://developers.google.com/youtube/gaming/playables/developer_portal)** (not YouTube Studio). Access is invite-only — fill the [interest form](https://developers.google.com/youtube/gaming/playables) if you don't have access yet.
+
+**Full walkthrough:** [`UPLOAD.md`](UPLOAD.md)
+
+1. Build bundle: `./tools/build-bundle.sh` → `deep-catch-playables.zip`
+2. Open **Playables Developer Portal** → **Add a new game**
+3. Upload **ZIP** + **icon** + **preview video** + metadata (below)
+4. **Create release** → **Verify and test** tab → test Dev Link on phone
+5. Complete [`PLAYABLES-QA.md`](PLAYABLES-QA.md) in embed → **Submit for Certification**
+
+**Hosted test URL:** `https://kosweet.github.io/deep-catch/`
 
 ---
 

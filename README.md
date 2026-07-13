@@ -6,7 +6,7 @@ A cozy little fishing trip — a single-file HTML5 canvas game. Cast your line i
 
 ## The game
 
-- **One-thumb fishing.** Move to aim (arrow keys work too), tap the water (or press **Cast**) to drop your hook. It grabs any fish it touches on the way down *and* up, then reels your haul to the surface. No menus in the way of the water.
+- **One-thumb fishing.** On **phone**, drag on the water to aim, then tap **Cast**. On **PC**, click the water to aim and cast in one go (or use Space). Arrow keys aim too. Reel with Cast / click again.
 - **Instant hauls.** Your catch banks itself in gold — no sell-or-keep popups. Every new species swims straight into your aquarium.
 - **Seven waters, each its own world.** Backyard Pond → Goldfish Garden → Kelp Forest → Open Sea → Frozen Fjord (with dancing aurora) → The Trench → **The Hadal Garden** — a pitch-black finale that's scary-deep *and* warm, lit by drifting embers, glowing jellies, and an ancient colossal anglerfish called **The Old Lantern**.
 - **45 species,** each drawn with its own silhouette — real sharks, a serpentine leviathan, a spiked pufferfish, fancy goldfish, an aurora-lit narwhal, glowing hadal jellies. Shy fish dart from a careless hook; predators notice, telegraph, and lunge to steal your catch — dodge or lose it.

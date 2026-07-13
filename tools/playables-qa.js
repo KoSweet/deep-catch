@@ -72,14 +72,14 @@ for (const f of saveFields) {
 }
 
 // --- dev leak guard ---
-if (/if \(!YT\)/.test(scriptMatch[1]) && scriptMatch[1].includes('500000000'))
-  pass('Dev gold grant', 'gated behind !YT (localhost only)');
-else fail('Dev gold grant', 'verify test gold does not run in Playables');
+if (/isLocalDev\(\)/.test(scriptMatch[1]) && scriptMatch[1].includes('500000000'))
+  pass('Dev gold grant', 'gated behind isLocalDev() (localhost only)');
+else fail('Dev gold grant', 'verify test gold does not run on GitHub Pages or Playables');
 
 if (!scriptMatch[1].includes('window.__dc'))
-  pass('Debug console', 'no __dc in Playables build');
-else if (scriptMatch[1].includes('if (!YT)') && scriptMatch[1].indexOf('window.__dc') > scriptMatch[1].indexOf('if (!YT)'))
-  pass('Debug console', '__dc gated behind !YT');
+  pass('Debug console', 'no __dc in production build');
+else if (scriptMatch[1].includes('isLocalDev()') && scriptMatch[1].indexOf('window.__dc') > scriptMatch[1].indexOf('isLocalDev()'))
+  pass('Debug console', '__dc gated behind isLocalDev()');
 else fail('Debug console', '__dc may be exposed in production');
 
 // --- UX surfaces ---

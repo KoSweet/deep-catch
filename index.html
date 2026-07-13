@@ -405,6 +405,7 @@
   "use strict";
   // YouTube Playables environment (null when running as a plain web page)
   const YT = (typeof ytgame !== "undefined" && ytgame.IN_PLAYABLES_ENV) ? ytgame : null;
+  const isLocalDev = () => !YT && /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const cv = document.getElementById("cv");
   const ctx = cv.getContext("2d");
   const stage = document.getElementById("stage");
@@ -1282,7 +1283,8 @@
     if (paused) return;
     const p = toStage(e);
     if (state.view === "room") { if (tapTankFish(p.x, p.y)) return; feedTank(p.x, p.y); return; }
-    hook.tx = clampX(p.x); cast();
+    hook.tx = clampX(p.x);
+    if (e.pointerType === "mouse") cast(); // PC: click water to aim + cast; touch uses Cast button
   });
   window.addEventListener("keydown", (e) => {
     if (paused) return;
@@ -3451,7 +3453,7 @@
   el("dedication-save").addEventListener("click", saveDedication);
   el("dedication-overlay").addEventListener("click", (e) => { if (e.target === el("dedication-overlay")) el("dedication-overlay").classList.remove("open"); });
 
-  if (!YT) {
+  if (isLocalDev()) {
     window.__dc = {
       SPECIES, drawFish, state, spawnBottle,
       get bottle() { return bottle; },
@@ -3500,7 +3502,7 @@
     refreshThermos();
     if (state.gold > 0 || state.lineUp > 0) state.tut.gold = true;
     if (speciesCount() > 0) { state.tut.cast = true; state.tut.species = true; }
-    if (!YT) { state.gold = Math.max(state.gold, 500000000); save(); } // local testing purse — never runs inside YouTube
+    if (isLocalDev()) { state.gold = Math.max(state.gold, 500000000); save(); } // localhost test purse only
     if (state._rescanQuests) { delete state._rescanQuests; Quests.rescan(); save(); }
     fish = []; ensureFish(); rebuildTank(); // the loaded water gets its own school
     muteBtn.textContent = state.muted ? "🔇" : "🔊";

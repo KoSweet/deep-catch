@@ -52,8 +52,8 @@ server.listen(PORT, async () => {
     else fail('Icon asset', 'missing or wrong type');
 
     if (!html.match(/window\.__dc\s*=/)) pass('Prod __dc gate', 'no __dc in Playables build');
-    else if (html.includes('if (!YT)') && html.indexOf('window.__dc') > html.indexOf('if (!YT)'))
-      pass('Prod __dc gate', '__dc only when !YT');
+    else if (html.includes('isLocalDev()') && html.indexOf('window.__dc') > html.indexOf('isLocalDev()'))
+      pass('Prod __dc gate', '__dc only on localhost');
     else fail('Prod __dc gate', '__dc may leak in Playables');
 
     if (fs.existsSync(path.join(ROOT, 'docs/DEPLOY.md'))) pass('Deploy docs', 'docs/DEPLOY.md');

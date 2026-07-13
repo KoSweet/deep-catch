@@ -81,7 +81,7 @@ Then complete this manual matrix in a **real YouTube Playables embed** (not loca
 | # | Test | Pass |
 |---|------|------|
 | 7.1 | `node tools/playables-qa.js` — all static checks green | ☐ |
-| 7.2 | No `$500M` auto-gold in Playables build (`!YT` gate) | ☐ |
+| 7.2 | No `$500M` auto-gold on GitHub Pages or Playables (`isLocalDev` = localhost only) | ☐ |
 | 7.3 | No `__dc.rich()` in production console path | ☐ |
 | 7.4 | Listing assets: icon, 10–15s video, description | ☐ |
 | 7.5 | GitHub Pages / host URL live (not placeholder) | ☐ |

@@ -130,7 +130,9 @@
   .btn-shop.tut-bounce { animation: tutBounce 0.9s ease-in-out 3; }
   .tab.tut-glow { box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(255,206,74,.45); }
   .tut-callout {
-    position: absolute; z-index: 18; font-family: var(--font); font-weight: 700; font-size: 11px;
+    position: absolute; z-index: 18; left: 72%; bottom: 72px; transform: translateX(-50%);
+    max-width: 58%; text-align: center;
+    font-family: var(--font); font-weight: 700; font-size: 11px;
     letter-spacing: .04em; color: var(--surface); background: rgba(20,12,26,.72);
     border: 1px solid var(--panel-edge); border-radius: 10px; padding: 7px 11px;
     pointer-events: none; opacity: 0; transition: opacity .35s;
@@ -329,7 +331,7 @@
 
   <div class="stage" id="stage">
     <canvas id="cv"></canvas>
-    <div class="hint" id="hint">Move to aim &middot; tap the water or press Cast to drop your hook</div>
+    <div class="hint" id="hint">Drag to move &middot; Cast to fish</div>
     <div class="pill-warn" id="golden-warn">✨ golden hour soon</div>
     <div class="tut-callout" id="tut-callout"></div>
     <div class="pred-warn" id="pred-warn">!</div>
@@ -1364,12 +1366,31 @@
   const tutEl = () => el("tut-callout");
   const shopBtn = () => el("btn-shop");
   const roomTab = () => el("tab-room");
+  const touchPrimary = () => window.matchMedia("(pointer: coarse)").matches;
+
+  function controlHintText() {
+    return touchPrimary()
+      ? "Drag to move · Cast to fish"
+      : "Click the water to cast · or Cast / Space";
+  }
+  function showControlHint() {
+    if (state.tut.cast || state.view !== "fish") return;
+    const msg = controlHintText();
+    hint.textContent = msg;
+    hint.style.opacity = 1;
+    hintHidden = false;
+    tutEl().textContent = msg;
+    tutEl().classList.add("show");
+    castBtn.classList.add("tut-pulse");
+  }
 
   function tutBeatCast() {
     if (state.tut.cast) return;
     state.tut.cast = true; save();
     castBtn.classList.add("tut-pulse");
-    tutEl().textContent = "Tap Reel when your hook is deep enough";
+    tutEl().textContent = touchPrimary()
+      ? "Tap Reel when your hook is deep enough"
+      : "Click again or press Cast to reel in";
     tutEl().classList.add("show");
   }
   function tutBeatGold() {
@@ -3527,6 +3548,7 @@
     fish = []; ensureFish(); rebuildTank(); // the loaded water gets its own school
     muteBtn.textContent = state.muted ? "🔇" : "🔊";
     syncHud(); syncBrand(); setView("fish"); Quests.check(); syncDexPill();
+    showControlHint();
     sendScore(); // baseline: best score must match the save
     if (YT) YT.game.gameReady();
     if (journalDone() && !state.journalFinaleSeen && !state.boatName)

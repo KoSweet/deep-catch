@@ -478,6 +478,16 @@
       if (!state.pondsOwned.includes(state.pond)) state.pond = 0;
       state._rescanQuests = true;
     }
+    repairDevGold();
+  }
+  function repairDevGold() {
+    if (isLocalDev() || YT) return;
+    const species = Object.keys(state.collection).length;
+    // Undo saves polluted by the old GitHub Pages $500M boot grant
+    if (state.gold >= 400000000 && state.lineUp < 10 && species < 20) {
+      state.gold = 0;
+      state._goldRepaired = true;
+    }
   }
   async function load() {
     try {
@@ -486,6 +496,7 @@
       const raw = YT ? await YT.game.loadData()
         : localStorage.getItem(SAVE_KEY) || localStorage.getItem("deepcatch.v2") || localStorage.getItem("deepcatch.v1");
       if (raw) applySave(JSON.parse(raw));
+    if (state._goldRepaired) save();
     } catch (e) {}
     loadDone = true;
   }
@@ -1278,14 +1289,23 @@
   // ---------- input ----------
   function toStage(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   const clampX = (x) => Math.max(26, Math.min(W - 26, x));
-  cv.addEventListener("pointermove", (e) => { if (!paused) hook.tx = clampX(toStage(e).x); });
+  let touchDrag = false;
+  cv.addEventListener("pointermove", (e) => {
+    if (paused) return;
+    if (e.pointerType === "touch" && !touchDrag) return;
+    hook.tx = clampX(toStage(e).x);
+  });
   cv.addEventListener("pointerdown", (e) => {
     if (paused) return;
     const p = toStage(e);
     if (state.view === "room") { if (tapTankFish(p.x, p.y)) return; feedTank(p.x, p.y); return; }
-    hook.tx = clampX(p.x);
-    if (e.pointerType === "mouse") cast(); // PC: click water to aim + cast; touch uses Cast button
+    if (e.pointerType === "mouse") { hook.tx = clampX(p.x); cast(); return; }
+    touchDrag = true;
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
   });
+  const endTouchDrag = (e) => { if (e.pointerType === "touch") touchDrag = false; };
+  cv.addEventListener("pointerup", endTouchDrag);
+  cv.addEventListener("pointercancel", endTouchDrag);
   window.addEventListener("keydown", (e) => {
     if (paused) return;
     if (e.code === "Space") { e.preventDefault(); cast(); }
